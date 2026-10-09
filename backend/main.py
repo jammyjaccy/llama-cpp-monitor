@@ -13,14 +13,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from app import config, database
-from app.engine.fetcher import Fetcher
-from app.engine.helpdiff_exec import HelpCache
-from app.engine.llm import LLMClient
-from app.engine.runner import BusyError, Runner
-from app.models import NewCommand, Run, Version
-from app.scheduler import MonitorScheduler
-from app.schemas import (
+from backend import config, database
+from backend.engine.fetcher import Fetcher
+from backend.engine.helpdiff_exec import HelpCache
+from backend.engine.llm import LLMClient
+from backend.engine.runner import BusyError, Runner
+from backend.models import NewCommand, Run, Version
+from backend.scheduler import MonitorScheduler
+from backend.schemas import (
     RunOut,
     SettingsOut,
     SettingsUpdate,
@@ -35,6 +35,8 @@ _trigger_lock = threading.Lock()
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
+    # ADR-0004：.env 缺失时拒绝启动（load_settings 依赖模型默认值，必须先校验）
+    config.ensure_model_defaults()
     database.init_db()
     with database.get_session() as db:
         s = config.load_settings(db)
@@ -72,35 +74,44 @@ def _build_runner() -> Runner:
 
 
 def _run_monitor(trigger: str) -> None:
-    runner = _build_runner()
+    """定时任务路径：无预建 run 行，runner.run 内部自行建行并落状态。"""
+    runner = None
     try:
+        runner = _build_runner()
         runner.run(trigger)
     except Exception:
-        pass  # run 状态已在 runner 内记录
+        # run 状态已在 runner 内记录；build 失败时无 run 行可落库。
+        # 仅避免异常逃逸到调度线程导致静默崩溃。
+        pass
     finally:
-        for c in (runner.fetcher, runner.llm):
-            try:
-                c.close()
-            except Exception:
-                pass
+        if runner:
+            for c in (runner.fetcher, runner.llm):
+                try:
+                    c.close()
+                except Exception:
+                    pass
 
 
 def _run_monitor_with_row(run_id: int) -> None:
     """后台执行：runner 复用已创建的 run 行（手动触发路径）。"""
-    runner = _build_runner()
+    runner = None
     try:
+        runner = _build_runner()
         runner.run_with_row(run_id, "manual")
     except BusyError:
         # 极端竞态：检查后定时任务抢了锁 -> 把已建 run 行落为 failed，避免永久卡 running
         _mark_run_failed(run_id, "任务进行中，本次触发未执行")
     except Exception:
-        pass  # 状态已落库（M1 兜底）；此处仅避免线程静默崩溃
+        # build 失败（配置/DB 异常）时 run 行尚未落状态 -> 落 failed 避免卡 running。
+        # runner 内已落状态时 _mark_run_failed 幂等（仅改 running 行）。
+        _mark_run_failed(run_id, "任务启动失败，请查看服务日志")
     finally:
-        for c in (runner.fetcher, runner.llm):
-            try:
-                c.close()
-            except Exception:
-                pass
+        if runner:
+            for c in (runner.fetcher, runner.llm):
+                try:
+                    c.close()
+                except Exception:
+                    pass
 
 
 # ---------- REST API ----------
@@ -231,7 +242,7 @@ def _command_out(c: NewCommand) -> dict:
 
 
 def _new_run_row(trigger: str) -> Run:
-    from app.models import utcnow
+    from backend.models import utcnow
     with database.get_session() as db:
         run = Run(trigger=trigger, status="running", started_at=utcnow())
         db.add(run)
@@ -240,7 +251,7 @@ def _new_run_row(trigger: str) -> Run:
 
 
 def _mark_run_failed(run_id: int, error: str) -> None:
-    from app.models import utcnow
+    from backend.models import utcnow
     with database.get_session() as db:
         run = db.get(Run, run_id)
         if run and run.status == "running":

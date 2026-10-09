@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app import config, database
-from app.database import Base
-from app.main import _run_out, _version_out, app
-from app.models import NewCommand, Run, Version
+from backend import config, database
+from backend.database import Base
+from backend.main import _run_out, _version_out, app
+from backend.models import NewCommand, Run, Version
 
 
 @pytest.fixture()
@@ -19,6 +19,12 @@ def client(tmp_path, monkeypatch):
     TestingSession = sessionmaker(bind=engine, future=True, expire_on_commit=False)
     monkeypatch.setattr(database, "engine", engine)
     monkeypatch.setattr(database, "SessionLocal", TestingSession)
+    # ADR-0004：lifespan 会 ensure_model_defaults()（读真实 .env）；测试注入固定值
+    monkeypatch.setattr(config, "_MODEL_DEFAULTS", {
+        "model_base_url": "http://localhost:4000",
+        "model_api_key": "env-key",
+        "model_name": "Swift-Qwen3.8-27B",
+    })
     with TestClient(app) as c:
         with TestingSession() as s:
             config.load_settings(s)
@@ -58,7 +64,7 @@ def test_runs_empty(client):
 
 def test_trigger_busy_returns_409(client, monkeypatch):
     """M5：任务进行中时手动触发返回 409。"""
-    from app.engine import runner as runner_mod
+    from backend.engine import runner as runner_mod
 
     monkeypatch.setattr(runner_mod.Runner, "is_busy", staticmethod(lambda: True))
     c, _ = client
@@ -138,8 +144,8 @@ def test_version_out_serialization():
 
 def test_spa_resolve_blocks_traversal(tmp_path, monkeypatch):
     """M4：_resolve_spa_file 不得解析出 dist 目录外的文件（../ 穿越）。"""
-    import app.main as main_mod
-    from app.main import _resolve_spa_file
+    import backend.main as main_mod
+    from backend.main import _resolve_spa_file
 
     dist = tmp_path / "dist"
     dist.mkdir()

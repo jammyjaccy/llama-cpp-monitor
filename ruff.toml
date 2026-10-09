@@ -8,4 +8,4 @@ select = ["E", "F", "I", "W"]
 
 [lint.per-file-ignores]
 # llm.py 含中文提示词长行（换行会改动 LLM prompt 内容）
-"app/engine/llm.py" = ["E501"]
+"backend/engine/llm.py" = ["E501"]

@@ -1,44 +1,24 @@
 """冒烟测试：启动服务 -> 触发真实任务 -> 验证 API 返回。
 
-API key 从 %LOCALAPPDATA%/hermes/config.yaml 读取，仅进程内使用，不打印。
+模型配置从项目 .env 读取（ADR-0004），仅进程内使用，不打印。
 """
 import os
-import re
 import sys
 import time
 import urllib.request
 
-import yaml
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from backend.config import EnvMissingError, load_env  # noqa: E402
 
 BASE = "http://127.0.0.1:8765"
 
 
 def get_api_key() -> str:
-    path = os.path.join(os.environ["LOCALAPPDATA"], "hermes", "config.yaml")
-    with open(path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    # 递归找包含 4000 的 api key
-    def find(node):
-        if isinstance(node, dict):
-            for k, v in node.items():
-                if "api_key" in k.lower() and "4000" in str(k):
-                    return v
-                r = find(v)
-                if r:
-                    return r
-        elif isinstance(node, list):
-            for item in node:
-                r = find(item)
-                if r:
-                    return r
-        return None
-    key = find(cfg)
-    if not key:
-        # 兜底：找任意 localhost:4000 相关配置块
-        text = open(path, encoding="utf-8").read()
-        m = re.search(r"api_key:\s*(\S+)", text)
-        key = m.group(1) if m else ""
-    return key
+    try:
+        return load_env()["model_api_key"]
+    except EnvMissingError as e:
+        print("ERROR:", e)
+        sys.exit(1)
 
 
 def api(path, method="GET", body=None, timeout=10):

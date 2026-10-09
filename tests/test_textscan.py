@@ -1,5 +1,5 @@
 """文本扫描：从 commit/release 文本中提取 ADD --xxx 类新增命令。"""
-from app.engine.textscan import scan_new_flags
+from backend.engine.textscan import scan_new_flags
 
 
 def test_add_colon_form():

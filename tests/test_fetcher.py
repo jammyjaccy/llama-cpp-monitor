@@ -1,7 +1,7 @@
 """Fetcher：tag 解析、版本比较、release 列表过滤。"""
 import pytest
 
-from app.engine.fetcher import newer_releases, tag_number
+from backend.engine.fetcher import newer_releases, tag_number
 
 
 def test_tag_number():

@@ -1,22 +1,31 @@
-"""调试 LLM 端点连通性（key 进程内使用，不打印）。"""
+"""调试 LLM 端点连通性（key 从项目 .env 读取，进程内使用，不打印）。"""
+import json
 import os
+import sys
 import urllib.request
 
-import yaml
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from backend.config import EnvMissingError, load_env  # noqa: E402
 
-path = os.path.join(os.environ["LOCALAPPDATA"], "hermes", "config.yaml")
-cfg = yaml.safe_load(open(path, encoding="utf-8"))
-text = open(path, encoding="utf-8").read()
+try:
+    cfg = load_env()
+except EnvMissingError as e:
+    print("ERROR:", e)
+    sys.exit(1)
 
-import re
-m = re.search(r"api_key:\s*(\S+)", text)
-key = m.group(1) if m else ""
+key = cfg["model_api_key"]
 print("key found:", bool(key))
 
+body = json.dumps({
+    "model": cfg["model_name"],
+    "messages": [{"role": "user", "content": "说 ok"}],
+    "max_tokens": 10,
+}).encode()
+
 req = urllib.request.Request(
-    "http://localhost:4000/v1/chat/completions",
+    cfg["model_base_url"].rstrip("/") + "/v1/chat/completions",
     method="POST",
-    data='{"model":"Swift-Qwen3.8-27B","messages":[{"role":"user","content":"说 ok"}],"max_tokens":10}'.encode(),
+    data=body,
     headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
 )
 try:

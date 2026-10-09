@@ -1,5 +1,5 @@
 """help-diff：两份 --help 文本 diff 出新增 flag。"""
-from app.engine.helpdiff import diff_help_texts
+from backend.engine.helpdiff import diff_help_texts
 
 OLD_HELP = """llama-server:
   --help            Show this help

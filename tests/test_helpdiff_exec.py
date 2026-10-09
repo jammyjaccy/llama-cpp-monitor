@@ -4,7 +4,7 @@ import zipfile
 
 import pytest
 
-from app.engine.helpdiff_exec import (
+from backend.engine.helpdiff_exec import (
     HelpCache,
     HelpDiffError,
     extract_binary,

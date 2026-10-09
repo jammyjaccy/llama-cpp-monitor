@@ -9,11 +9,11 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from app import config
-from app.database import Base
-from app.engine.llm import LLMError
-from app.engine.runner import BusyError, Runner
-from app.models import NewCommand, Version
+from backend import config
+from backend.database import Base
+from backend.engine.llm import LLMError
+from backend.engine.runner import BusyError, Runner
+from backend.models import NewCommand, Version
 
 
 class FakeFetcher:
@@ -78,10 +78,16 @@ class FakeHelpCache:
 
 
 @pytest.fixture()
-def env(tmp_path):
+def env(tmp_path, monkeypatch):
     engine = create_engine(f"sqlite:///{tmp_path}/test.db", future=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, future=True, expire_on_commit=False)
+    # ADR-0004：模型默认值来自 .env；测试用固定值，不依赖真实 .env
+    monkeypatch.setattr(config, "_MODEL_DEFAULTS", {
+        "model_base_url": "http://localhost:4000",
+        "model_api_key": "env-key",
+        "model_name": "Swift-Qwen3.8-27B",
+    })
     with Session() as s:
         config.load_settings(s)
     return Session
@@ -190,7 +196,7 @@ def test_positive_triggers_help_diff(env):
     cache = FakeHelpCache(texts={"b11517": "  --help  Show help\n"})
     runner = make_runner(env, fetcher, llm, cache)
     # 模拟下载：monkeypatch download_help
-    import app.engine.runner as runner_mod
+    import backend.engine.runner as runner_mod
 
     downloaded = []
 
@@ -228,7 +234,7 @@ def test_help_diff_establishes_missing_prev_baseline(env):
     llm = FakeLLM(result=POSITIVE_RESULT)
     cache = FakeHelpCache()  # 无任何缓存
     runner = make_runner(env, fetcher, llm, cache)
-    import app.engine.runner as runner_mod
+    import backend.engine.runner as runner_mod
 
     downloaded = []
 
@@ -258,8 +264,8 @@ def test_help_diff_failure_marks_not_diffed(env):
     llm = FakeLLM(result=POSITIVE_RESULT)
     cache = FakeHelpCache(texts={"b11517": "old"})
     runner = make_runner(env, fetcher, llm, cache)
-    import app.engine.runner as runner_mod
-    from app.engine.helpdiff_exec import HelpDiffError
+    import backend.engine.runner as runner_mod
+    from backend.engine.helpdiff_exec import HelpDiffError
 
     def boom(f, tag, c):
         raise HelpDiffError("download failed")
@@ -328,7 +334,7 @@ def test_reentry_rejected(env):
     fetcher = FakeFetcher(RELEASES, COMPARE)
     runner = make_runner(env, fetcher, FakeLLM())
     # 模拟任务进行中（模块级锁）
-    import app.engine.runner as runner_mod
+    import backend.engine.runner as runner_mod
     assert runner_mod._acquire()
     try:
         with pytest.raises(BusyError):

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from backend.database import Base
 
 
 def utcnow() -> str:

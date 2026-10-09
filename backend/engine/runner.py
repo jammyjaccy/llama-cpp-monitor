@@ -8,13 +8,13 @@ import threading
 
 from sqlalchemy import select
 
-from app import config
-from app.engine import helpdiff
-from app.engine.fetcher import newer_releases, tag_number
-from app.engine.helpdiff_exec import HelpCache, download_help
-from app.engine.llm import LLMError
-from app.engine.textscan import scan_new_flags
-from app.models import NewCommand, Run, Version, utcnow
+from backend import config
+from backend.engine import helpdiff
+from backend.engine.fetcher import newer_releases, tag_number
+from backend.engine.helpdiff_exec import HelpCache, download_help
+from backend.engine.llm import LLMError
+from backend.engine.textscan import scan_new_flags
+from backend.models import NewCommand, Run, Version, utcnow
 
 
 class BusyError(Exception):

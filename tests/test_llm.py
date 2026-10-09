@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from app.engine.llm import LLMClient, LLMError, build_prompt
+from backend.engine.llm import LLMClient, LLMError, build_prompt
 
 COMMITS = [
     {"sha": "abc123", "message": "CUDA: improve MTP draft acceptance"},

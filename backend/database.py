@@ -25,7 +25,7 @@ SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
 
 
 def init_db() -> None:
-    from app import models  # noqa: F401  确保模型注册
+    from backend import models  # noqa: F401  确保模型注册
 
     Base.metadata.create_all(engine)
 

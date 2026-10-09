@@ -3,4 +3,5 @@ uvicorn[standard]>=0.54
 apscheduler>=3.11
 sqlalchemy>=2.1
 httpx>=0.28
+python-dotenv>=1.0
 pytest>=9.1
