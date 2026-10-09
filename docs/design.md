@@ -62,7 +62,9 @@
 - 调度：**应用内置**（APScheduler，ADR-0002），页面可改间隔、可点「立即执行」
 - Python 环境：**conda 虚拟环境 `llamacpp-monitor`**，项目所有依赖装在此环境，运行也用它；后端依赖写入根目录 `requirements.txt`（前端 Node 依赖由 package.json 管理）
 
-**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff。
+**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff、0004 模型默认配置存 .env。
+
+**目录约定**：后端代码目录为 `backend/`（原 `app/` 重命名，import 与文档引用同步更新）。
 
 ## 4.5 技术选型清单
 
@@ -167,7 +169,7 @@ settings(
 |---|---|
 | 任务执行 | runs 列表（时间、触发方式、状态、处理版本、错误），顶部「立即执行」按钮 + 间隔设置 |
 | 报告 | versions 分页列表（Element Plus 分页），点进详情：正提升条目、启动命令影响、建议 flag、新增命令、原始 commit 列表 |
-| 配置 | 模型配置（base_url / api key / 模型名，**默认取 Hermes 系统默认模型配置**）、任务间隔、基线版本、代理地址、启动命令 |
+| 配置 | 模型配置（base_url / api key / 模型名，**默认值来自项目 `.env`**，见 ADR-0004）、任务间隔、基线版本、代理地址、启动命令 |
 
 ## 8. 配置项
 
@@ -175,7 +177,7 @@ settings(
 |---|---|---|
 | `interval_minutes` | 120 | 任务间隔，页面可调 |
 | `baseline_tag` | b11514 | 首次运行基线 |
-| `model_base_url` / `model_api_key` / `model_name` | **Hermes 系统默认模型**（当前：base_url=`http://localhost:4000`，model=`Swift-Qwen3.8-27B`，api_key 取环境变量 `HERMES_CUSTOM_LOCALHOST_4000_API_KEY`，见 `%LOCALAPPDATA%\hermes\config.yaml`） | 分析用 LLM，页面可改 |
+| `model_base_url` / `model_api_key` / `model_name` | **项目自带默认模型配置，存于 `.env`**（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，见 ADR-0004；仓库提供 `.env.example` 模板，`.env` 不入库） | 分析用 LLM，页面可改（页面值优先于 .env）；`.env` 缺失时启动报错拒绝启动 |
 | `proxy` | `http://127.0.0.1:7981` | GitHub 访问代理 |
 | `launch_command` | 用户提供的 llama-server.exe 命令（原文存档于本文件附录） | 影响分析输入 |
 | DB 路径 | `H:\data\llamacpp-monitor\monitor.db` | |

@@ -23,7 +23,7 @@
 13. As a 本地推理用户, I want 仅当版本被判定有正提升时才执行 help-diff（下载二进制跑 --help 与上版 diff）, so that 下载成本限制在少数值得关注的版本上。
 14. As a 本地推理用户, I want 在任务执行页面看到每次运行的时间、触发方式（定时/手动）、状态（ok/partial/failed）、处理的版本和错误信息, so that 我能判断系统是否正常工作。
 15. As a 本地推理用户, I want 报告列表以分页形式展现, so that 版本积累多了之后依然流畅浏览。
-16. As a 本地推理用户, I want 在配置页面修改分析用 LLM 的 base_url、api key、模型名, so that 我可以随时切换分析模型（默认使用 Hermes 系统默认模型）。
+16. As a 本地推理用户, I want 在配置页面修改分析用 LLM 的 base_url、api key、模型名, so that 我可以随时切换分析模型（默认值来自项目 `.env` 配置，页面值优先）。
 17. As a 本地推理用户, I want 在配置页面修改基线版本, so that 我可以重新设定增量起点。
 18. As a 本地推理用户, I want 在配置页面修改启动命令, so that 我换了本地服务配置后影响分析跟着更新。
 19. As a 本地推理用户, I want 在配置页面修改 GitHub 访问代理地址, so that 网络环境变化时监控不中断。
@@ -56,7 +56,7 @@
 - `versions`：每个版本一条。tag（唯一）、published_at、commit_count、commits_raw（完整 commit 列表原文）、positive_items（LLM 正提升条目，JSON）、launch_impact（启动影响分析，JSON）、suggested_flags（建议 flag，JSON）、help_diffed（0/1）、analyzed（0/1）、created_at。
 - `new_commands`：新增命令单独记录。tag、flag、source（text | help-diff）、description；(tag, flag, source) 唯一。
 - `runs`：每次运行一条。started_at、ended_at、trigger（scheduled | manual）、status（ok | partial | failed）、versions_processed（JSON 数组）、error。
-- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514）、model_base_url / model_api_key / model_name（默认取 Hermes 系统默认模型：base_url=http://localhost:4000, model=Swift-Qwen3.8-27B, key 走环境变量 HERMES_CUSTOM_LOCALHOST_4000_API_KEY）、proxy（默认 http://127.0.0.1:7981）、launch_command（用户启动命令原文，见设计文档附录）。
+- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7981）、launch_command（用户启动命令原文，见设计文档附录）。
 
 **数据源（已验证的事实）**
 
@@ -107,6 +107,6 @@
 ## Further Notes
 
 - 设计文档：`docs/design.md`（含完整流程图、配置表、用户启动命令原文附录）。
-- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0003`。
-- LLM 默认模型来自 Hermes 系统配置（`%LOCALAPPDATA%\hermes\config.yaml` 的 model 段），应用启动时读取作为默认值，页面可覆盖。
+- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0004`。
+- LLM 默认模型来自项目 `.env`（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`），仓库提供 `.env.example` 模板，`.env` 本身不入库；页面配置可覆盖（页面值优先）；`.env` 缺失时启动报错拒绝启动（ADR-0004）。
 - 首次运行基线 b11514 = 用户当前运行版本；基线本身不入库。
