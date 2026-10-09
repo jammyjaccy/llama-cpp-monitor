@@ -1,0 +1,32 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 密钥与本地配置（绝不提交）
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== 前端 / Node（备用） =====
+node_modules/
+dist/
+*.local
+npm-debug.log*
+yarn-error.log*
+
+# ===== 运行期生成的数据 =====
+output/
+reports/
+*.log
+
+# ===== IDE / 系统 =====
+.vscode/
+.idea/
+.DS_Store
