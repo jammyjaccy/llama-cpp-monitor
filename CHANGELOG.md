@@ -21,6 +21,7 @@
 - 2026-10-09: spec 落盘 docs/spec.md 并提交推送（f57a633）
 - 2026-10-09: 模型配置决策变更 → ADR-0004，design.md / spec.md 文档同步更新
 - 2026-10-09: 按 ADR-0004 调整代码——`app/`→`backend/` 全量重命名（import/tests/scripts/ruff.toml 同步）；模型默认三项改由项目 `.env` 提供（新增 `load_env`/`ensure_model_defaults`/`EnvMissingError`，lifespan 启动时校验，`.env` 缺失拒绝启动）；新增 `.env.example`（入库）+ `.env`（不入库）；requirements.txt 加 `python-dotenv`；`scripts/` 移除 Hermes 配置读取改用 `.env`
+- 2026-10-10: 修复 dev 模式前端代理端口——`vite.config.ts` 代理目标 8000 → 8765（与后端启动端口一致）；此前 dev 模式（5173）下所有 `/api/*` 请求 500，页面保存配置静默失败，导致 settings 表残留占位符 `model_api_key`（`${HERMES_...}`）覆盖 `.env` 真实 key，任务持续 partial。已清除该坏覆盖，key 回落 `.env`
 - 2026-10-09: code-review 8 项修复——①`load_env` 裸键空值用 `or ""`（不再写 None 触发 pydantic 500）；②`load_settings` 不再落库默认值（settings 表只存页面覆盖，改 `.env` 重启即生效，强化 ADR-0004 优先级）；③④`_build_runner` 移入 try（定时路径不静默崩溃、手动路径 run 行落 failed 不卡 running）；⑤`ensure_model_defaults` 去 `env_path` 参数（避免缓存后路径被忽略的契约陷阱）；⑥⑦脚本健壮性（`debug_llm` 用 json.dumps 构造请求体、两脚本优雅处理缺失 `.env`）；⑧`EDITABLE_KEYS` 改为派生（`STATIC_DEFAULTS + MODEL_KEYS`，免双份维护）。测试 72 通过、ruff 通过、E2E 两路径复验
 
 ## 失败记录
