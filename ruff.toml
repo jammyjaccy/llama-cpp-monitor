@@ -1,0 +1,11 @@
+# 项目级 ruff 配置。
+# 本项目刻意使用顶层兜底 `except Exception`（run 状态落库、不向调度器/线程抛异常），
+# 故 lint 只启用 pyflakes(E/F)、isort(I)、pycodestyle(W) 基础规则，不启用 BLE/S 等风格安全类。
+line-length = 110
+
+[lint]
+select = ["E", "F", "I", "W"]
+
+[lint.per-file-ignores]
+# llm.py 含中文提示词长行（换行会改动 LLM prompt 内容）
+"app/engine/llm.py" = ["E501"]
