@@ -41,3 +41,4 @@
 - **gh issue create --body-file 传 MSYS 路径失败**：`open /tmp/t1.md: The system cannot find the path specified`（gh 是 Windows 原生程序，不认 MSYS 风格路径）。绕过：body 文件放 `$LOCALAPPDATA/Temp` 并传原生路径。
 - **仓库改名**：`ggerganov/llama.cpp` → `ggml-org/llama.cpp`，旧地址 301。代码统一用新地址。
 - **release body 无完整 commit 列表**：最初预期 release body 含 commit 列表，实际只有最新一条标题 + 下载链接。绕过：改用 compare API `compare/b{N-1}...b{N}`。
+- **git 全局代理端口失效**：`git push` 报 `Failed to connect to github.com:443 over proxy 127.0.0.1 after 2100 ms`。根因：git 全局 `http.proxy` 仍是旧端口 `7981`（已失效），用户实际代理已换到 `7897`。绕过：本次用 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=... push`（仅本次环境变量，未改全局）。后续若再遇此错，先 `curl -x http://127.0.0.1:<port>` 探活再推。
