@@ -17,6 +17,7 @@
 - **执行票进展**（父 issue #13）：#14 T11 代理默认值 .env 化（ADR-0006）**已完成**（见「已完成」2026-10-10 条目）
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
+  2. **任务时间显示差 8 小时**（2026-10-10 定位）：后端存 UTC 正确，前端 `TasksView.vue` 未做时区转换直接显示。方案 1（用户已批准）：仅前端显示层转本地时间，后端/数据不动。handoff：`docs/handoff/handoff-time-display-tz.md`
   3. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
