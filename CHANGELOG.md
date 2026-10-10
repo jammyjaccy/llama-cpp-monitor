@@ -18,11 +18,12 @@
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
   2. ~~**任务时间显示差 8 小时**~~ **已解决**（2026-10-10）：前端显示层转本地时间（方案 1），见「已完成」
-  3. **CI 护栏**（2026-10-10 retro 决定）：GitHub Actions 跑 ruff + pytest + 前端 build（含 vue-tsc）。handoff：`docs/handoff/handoff-ci-guardrail.md`
+  3. ~~**CI 护栏**~~ **已完成**（2026-10-10）：`.github/workflows/ci.yml` 上线，push/PR 触发 backend（ruff + pytest）/ frontend（npm ci + build 含 vue-tsc）两 job 并行，见「已完成」
   4. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
 
+- 2026-10-10: **CI 护栏上线**——新建 `.github/workflows/ci.yml`（push/pull_request 触发）：`backend` job（actions/setup-python 3.13 + `pip install -r requirements.txt` + `ruff check .` + `pytest`）、`frontend` job（actions/setup-node 20 + `npm ci` + `npm run build`，build 已含 `vue-tsc -b` 类型检查），两 job 并行；无 coverage/artifact 等附加步骤。本地三件套验证通过（ruff 全过、pytest 87 passed、前端 build 成功）。首跑绿的时间待 CI 完成后补记
 - 2026-10-10: **任务时间显示改为本地时区（方案 1）**——根因：后端 `utcnow()` 存 UTC 字符串（正确，不动），前端 `TasksView.vue` 裸字符串原样显示未做时区转换，导致与系统时钟差 8 小时（UTC+8）。修复：新增 `frontend/src/utils/format.ts` 的 `formatLocalTime()`（补 `'Z'` 按 UTC 解析 → 格式化本地 `YYYY-MM-DD HH:mm:ss`；空值显示 `—`，解析失败原样显示不抛异常），`TasksView.vue` 开始/结束时间两列复用。后端、数据、其他页面零改动，老数据自动兼容。前端无测试设施（无 vitest/jest），按 handoff 约定跳过单测。`npm run build`（含 vue-tsc 类型检查）通过
 - 2026-10-10: **T11 code-review 代码侧修复（2 处）**——①fetcher 跨模块调私有名：`config.py` 新增公开薄函数 `env_default(key)`（内部调 `ensure_env_defaults()`），`fetcher.py` 改调 `config.env_default("proxy")`；`_env_defaults()` 保留（config 内部 `_defaults()` 仍在用）。②测试断言内部结构：`test_proxy_default_from_env` 删除 `assert "proxy" not in config.STATIC_DEFAULTS`（行为已由 `s.proxy == ...` 外部断言覆盖）。全量测试 87 通过（不增不减）、ruff 通过
 - 2026-10-10: **T11 两轴 code-review（fc1d38d...HEAD）后文档修正**——spec issue #13 测试决策引用的接缝名 `_MODEL_DEFAULTS` 已随 T11 重命名为 `_ENV_DEFAULTS`，issue body 同步新名（含先例测试名 `test_ensure_env_defaults_missing_raises`）；机制与注入点未变，非新增接缝。代码未动。代码侧修复（测试断言内部结构、fetcher 跨模块调私有名）另交 Claude Code 处理
