@@ -47,6 +47,7 @@
 
 ## 失败记录
 
+- **CI 首跑失败：`ruff: command not found`**（run 38053691089）：`requirements.txt` 只含运行时依赖 + pytest，不含 ruff（本地 ruff 是单独装的），CI 只 `pip install -r requirements.txt` 导致 ruff 不在 PATH。绕过：backend job 安装步骤改为 `pip install -r requirements.txt ruff`。
 - **gh 不在 bash PATH**：`gh: command not found`。绕过：用绝对路径 `C:/Users/Jimmy-HAF700/AppData/Local/Programs/gh/gh.exe`。
 - **GitHub API 直连/代理均 301**：`api.github.com` 需要 `-L` 跟随重定向。绕过：`curl -sL -x http://127.0.0.1:7981`。
 - **gh issue create --body-file 传 MSYS 路径失败**：`open /tmp/t1.md: The system cannot find the path specified`（gh 是 Windows 原生程序，不认 MSYS 风格路径）。绕过：body 文件放 `$LOCALAPPDATA/Temp` 并传原生路径。
