@@ -20,6 +20,7 @@
 
 ## 已完成
 
+- 2026-10-10: **两轴 code-review（6e2b8c2...HEAD）后文档修正**——spec #9 单调性论证缺陷修复：「下界保证严格递增」对 reanalyze 路径不成立（补分析可处理低于当前基线的版本），spec.md 管线第 4 步、ADR-0005 后果、design.md §5.2 改为「显式比较是单调性的实际保证」；spec.md Further Notes「基线本身不入库」更正为「存于 settings 表 baseline_tag」（runner 自动推进会落库）。代码未动（实现本就带显式比较，行为正确）。Standards 轴判断项 2（proxy 默认双源）用户决定不处理
 - 2026-10-09: setup-matt-pocock-skills 配置（CLAUDE.md Agent skills 块 + docs/agents/* + GitHub triage 标签 5 个）
 - 2026-10-09: 设计拷问（grill-me / grill-with-docs）→ spec（issue #1）→ 7 张执行票（issue #2-#8）
 - 2026-10-09: 应用主体实现（feat 提交 fe91ed0）

@@ -69,7 +69,7 @@
 1. 拉 release 列表，选出大于 `max(baseline, 已入库最大版本)` 的所有版本。
 2. 每版：compare 取 commit 列表 → 文本扫描新增命令（source=text）→ LLM 分析（每版一次独立调用，输入为 commit 列表 + 启动命令，输出为结构化 JSON：正提升条目+理由、启动影响、建议 flag；LLM 可上网搜索辅助）→ 若判定有正提升则 help-diff（source=help-diff）→ 写 versions 记录。
 3. 写 runs 记录。
-4. 基线自动推进（ADR-0005）：run 记 ok 且处理了至少一个版本时，把 settings 表 baseline_tag 更新为本次处理的最大版本；partial/failed 不推进，处理 0 个版本不写库。
+4. 基线自动推进（ADR-0005）：run 记 ok 且处理了至少一个版本时，把 settings 表 baseline_tag 更新为本次处理的最大版本（仅当该版本严格大于当前基线，显式比较；补分析 reanalyze 路径可处理低于当前基线的版本，此比较保证基线不倒退、不压过手动设的更大值）；partial/failed 不推进，处理 0 个版本不写库。
 5. 失败语义：GitHub 不可达 → run=failed，进度不回退；LLM 不可用 → 版本落原始数据、分析留空、run=partial，下次运行补分析；单版 LLM 失败不影响其他版本。
 6. 重入：运行进行中拒绝新触发（API 返回任务进行中），不排队。
 
@@ -110,5 +110,5 @@
 - 设计文档：`docs/design.md`（含完整流程图、配置表、用户启动命令原文附录）。
 - 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0005`。
 - LLM 默认模型来自项目 `.env`（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`），仓库提供 `.env.example` 模板，`.env` 本身不入库；页面配置可覆盖（页面值优先）；`.env` 缺失时启动报错拒绝启动（ADR-0004）。
-- 基线 b11514 为初始进度游标，任务 ok 且处理了版本时自动前移（ADR-0005）；基线本身不入库。
+- 基线默认 b11514，存于 settings 表 baseline_tag，任务 ok 且处理了版本时自动前移（ADR-0005）。
 - 端口约定：后端（uvicorn）= 5000，前端 dev（vite）= 5100；启动脚本 `start.bat` 一键拉起。
