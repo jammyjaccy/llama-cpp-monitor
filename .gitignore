@@ -25,6 +25,9 @@ yarn-error.log*
 # ===== Claude Code 本地开发配置 =====
 .claude/
 
+# 一次性 agent 交接件（不入库）
+docs/handoff/
+
 # ===== 运行期生成的数据 =====
 output/
 reports/
