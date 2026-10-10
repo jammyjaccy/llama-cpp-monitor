@@ -62,7 +62,7 @@
 - 调度：**应用内置**（APScheduler，ADR-0002），页面可改间隔、可点「立即执行」
 - Python 环境：**conda 虚拟环境 `llamacpp-monitor`**，项目所有依赖装在此环境，运行也用它；后端依赖写入根目录 `requirements.txt`（前端 Node 依赖由 package.json 管理）
 
-**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff、0004 模型默认配置存 .env。
+**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff、0004 模型默认配置存 .env、0005 基线自动推进为持久进度游标。
 
 **目录约定**：后端代码目录为 `backend/`（原 `app/` 重命名，import 与文档引用同步更新）。
 
@@ -110,12 +110,13 @@
    d. **条件 --help diff**（ADR-0003）：仅当 c 判定存在正提升时，下载该版 Windows CUDA 二进制（对应用户平台 `llama-b{N}-bin-win-cuda-12.4-x64.zip`），跑 `--help`，与上一版缓存的 help 文本 diff，新增 flag 写入 new_commands 表（来源=help-diff，覆盖/补充 text 来源）。**下载失败不重试**（增量任务不回头处理旧版本），该版 help_diffed=0，页面标注「help diff 未完成」，新增命令靠 text 来源兜底
    e. 汇总写 versions 表（一条版本记录）
 3. 记录本次 run（起止时间、处理了哪些版本、成功/失败）
-4. 异常处理：GitHub 不可达/代理失效 → run 记 failed + 原因，已处理进度不回退；LLM 服务不可用 → 版本记录原始数据 + 分析字段留空，run 记 partial，下次执行补分析
-5. **重入**：上一次任务（无论定时还是手动）仍在执行时，新触发**直接拒绝**，API 返回「任务进行中」，页面提示；不做排队
+4. **基线自动推进**（ADR-0005）：run 记为 `ok` 且处理了至少一个版本时，把 settings 表 `baseline_tag` 更新为本次处理的最大版本（持久进度游标，见 §5.2）。`partial`/`failed` 不推进；处理 0 个版本（无新 release）不写库
+5. 异常处理：GitHub 不可达/代理失效 → run 记 failed + 原因，已处理进度不回退；LLM 服务不可用 → 版本记录原始数据 + 分析字段留空，run 记 partial，下次执行补分析
+6. **重入**：上一次任务（无论定时还是手动）仍在执行时，新触发**直接拒绝**，API 返回「任务进行中」，页面提示；不做排队
 
-### 5.2 首次运行基线
+### 5.2 基线（持久进度游标）
 
-DB 空时以 **b11514**（用户当前版本）为基线，只处理 b11514 之后的版本。基线版本可配置。
+baseline 是增量任务的持久进度游标（默认 **b11514**，可配置）。任务以 `ok` 完成且处理了至少一个版本时自动前移为本次处理的最大版本（ADR-0005）。下界为 `max(baseline, 已入库最大版本)`，因此正常运行时驱动增量的是已入库最大版本，baseline 只在 versions 表被清空后作为恢复起点——监控从「上次分析到的版本」续接，不回落 b11514 重放全部历史。baseline 只严格递增（不会压过用户手动设的更大值、不会倒退），用户仍可在页面手动改。
 
 ## 6. 数据模型（SQLite，`H:\data\llamacpp-monitor\monitor.db`）
 
@@ -186,7 +187,8 @@ settings(
 
 - **Python 环境**：conda 虚拟环境 `llamacpp-monitor`（`conda create -n llamacpp-monitor python=3.x`），安装与运行都在此环境
 - **依赖清单**：后端全部依赖写入根目录 `requirements.txt`；前端 Node 依赖由 `frontend/package.json` 管理
-- **进程管理**：启动脚本一键拉起（后端 `uvicorn` + 前端构建产物已就位）；**不做 Windows 服务化**，需要常驻时由用户自行配置任务计划程序
+- **进程管理**：启动脚本 `start.bat` 一键拉起（后端 `uvicorn backend.main:app --host 127.0.0.1 --port 5000`，conda 环境 `llamacpp-monitor`；前端构建产物已就位，生产模式由 FastAPI 在 5000 上静态托管）；**不做 Windows 服务化**，需要常驻时由用户自行配置任务计划程序
+- **端口约定**：后端（uvicorn）= **5000**；前端 dev（vite）= **5100**（vite 代理 `/api` → 5000）；生产模式前后端同端口 5000
 - **前端构建**：开发时 Vite dev server 代理 API；生产构建产物（`frontend/dist`）由 FastAPI 静态挂载，不入库
 
 ## 9. 「正提升」判定标准（LLM 分析依据）

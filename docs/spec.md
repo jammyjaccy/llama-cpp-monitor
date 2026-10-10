@@ -27,7 +27,7 @@
 17. As a 本地推理用户, I want 在配置页面修改基线版本, so that 我可以重新设定增量起点。
 18. As a 本地推理用户, I want 在配置页面修改启动命令, so that 我换了本地服务配置后影响分析跟着更新。
 19. As a 本地推理用户, I want 在配置页面修改 GitHub 访问代理地址, so that 网络环境变化时监控不中断。
-20. As a 本地推理用户, I want 首次运行时以我当前版本 b11514 为基线、只处理之后的版本, so that 旧版本不产生无意义的历史数据。
+20. As a 本地推理用户, I want 任务成功完成（ok）后基线自动前移为本次处理的最大版本, so that 即使 versions 表被清空，监控也从上次分析到的版本续接，不回落 b11514 重放全部历史。
 21. As a 本地推理用户, I want 当 LLM 服务不可用时版本仍落库（原始 commit 数据完整、分析字段留空）且运行标记 partial, so that 数据不丢、服务恢复后可补分析。
 22. As a 本地推理用户, I want 当 GitHub 不可达时运行标记 failed 并记录原因、已处理进度不回退, so that 网络抖动不会导致重复分析。
 23. As a 本地推理用户, I want 上一次运行未完成时新的触发被拒绝并明确提示「任务进行中」, so that 不会有两个任务并发写库。
@@ -56,7 +56,7 @@
 - `versions`：每个版本一条。tag（唯一）、published_at、commit_count、commits_raw（完整 commit 列表原文）、positive_items（LLM 正提升条目，JSON）、launch_impact（启动影响分析，JSON）、suggested_flags（建议 flag，JSON）、help_diffed（0/1）、analyzed（0/1）、created_at。
 - `new_commands`：新增命令单独记录。tag、flag、source（text | help-diff）、description；(tag, flag, source) 唯一。
 - `runs`：每次运行一条。started_at、ended_at、trigger（scheduled | manual）、status（ok | partial | failed）、versions_processed（JSON 数组）、error。
-- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7981）、launch_command（用户启动命令原文，见设计文档附录）。
+- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514，任务 ok 且处理了版本时自动前移为本次最大版本，见 ADR-0005）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7981）、launch_command（用户启动命令原文，见设计文档附录）。
 
 **数据源（已验证的事实）**
 
@@ -66,11 +66,12 @@
 
 **执行管线（一次运行，按 tag 升序逐版本）**
 
-1. 拉 release 列表，选出大于已处理最大 tag 的所有版本。
+1. 拉 release 列表，选出大于 `max(baseline, 已入库最大版本)` 的所有版本。
 2. 每版：compare 取 commit 列表 → 文本扫描新增命令（source=text）→ LLM 分析（每版一次独立调用，输入为 commit 列表 + 启动命令，输出为结构化 JSON：正提升条目+理由、启动影响、建议 flag；LLM 可上网搜索辅助）→ 若判定有正提升则 help-diff（source=help-diff）→ 写 versions 记录。
 3. 写 runs 记录。
-4. 失败语义：GitHub 不可达 → run=failed，进度不回退；LLM 不可用 → 版本落原始数据、分析留空、run=partial，下次运行补分析；单版 LLM 失败不影响其他版本。
-5. 重入：运行进行中拒绝新触发（API 返回任务进行中），不排队。
+4. 基线自动推进（ADR-0005）：run 记 ok 且处理了至少一个版本时，把 settings 表 baseline_tag 更新为本次处理的最大版本；partial/failed 不推进，处理 0 个版本不写库。
+5. 失败语义：GitHub 不可达 → run=failed，进度不回退；LLM 不可用 → 版本落原始数据、分析留空、run=partial，下次运行补分析；单版 LLM 失败不影响其他版本。
+6. 重入：运行进行中拒绝新触发（API 返回任务进行中），不排队。
 
 **API 契约（前端唯一入口）**
 
@@ -107,6 +108,7 @@
 ## Further Notes
 
 - 设计文档：`docs/design.md`（含完整流程图、配置表、用户启动命令原文附录）。
-- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0004`。
+- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0005`。
 - LLM 默认模型来自项目 `.env`（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`），仓库提供 `.env.example` 模板，`.env` 本身不入库；页面配置可覆盖（页面值优先）；`.env` 缺失时启动报错拒绝启动（ADR-0004）。
-- 首次运行基线 b11514 = 用户当前运行版本；基线本身不入库。
+- 基线 b11514 为初始进度游标，任务 ok 且处理了版本时自动前移（ADR-0005）；基线本身不入库。
+- 端口约定：后端（uvicorn）= 5000，前端 dev（vite）= 5100；启动脚本 `start.bat` 一键拉起。
