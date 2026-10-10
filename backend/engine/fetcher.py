@@ -4,6 +4,8 @@
 """
 import httpx
 
+from backend import config
+
 REPO = "ggml-org/llama.cpp"
 API_BASE = "https://api.github.com"
 
@@ -47,9 +49,14 @@ def newer_releases(
 
 
 class Fetcher:
-    """GitHub API 客户端。代理地址可配置（默认 http://127.0.0.1:7897）。"""
+    """GitHub API 客户端。代理地址可配置，默认取 .env 的 PROXY（ADR-0006，无第二份硬编码）。"""
 
-    def __init__(self, proxy: str = "http://127.0.0.1:7897", token: str | None = None):
+    def __init__(self, proxy: str | None = None, token: str | None = None):
+        # 默认代理来自 .env 派生默认（config._env_defaults()）；显式传入时优先。
+        # 代码中不再硬编码代理地址，消灭 config.py / fetcher.py 双源分叉。
+        if proxy is None:
+            proxy = config._env_defaults()["proxy"]
+        self.proxy = proxy
         headers = {"Accept": "application/vnd.github+json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"

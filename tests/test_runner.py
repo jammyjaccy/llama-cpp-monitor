@@ -82,11 +82,12 @@ def env(tmp_path, monkeypatch):
     engine = create_engine(f"sqlite:///{tmp_path}/test.db", future=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, future=True, expire_on_commit=False)
-    # ADR-0004：模型默认值来自 .env；测试用固定值，不依赖真实 .env
-    monkeypatch.setattr(config, "_MODEL_DEFAULTS", {
+    # ADR-0004/0006：.env 派生默认（模型三项 + 代理）；测试用固定值，不依赖真实 .env
+    monkeypatch.setattr(config, "_ENV_DEFAULTS", {
         "model_base_url": "http://localhost:4000",
         "model_api_key": "env-key",
         "model_name": "Swift-Qwen3.8-27B",
+        "proxy": "http://127.0.0.1:7897",
     })
     with Session() as s:
         config.load_settings(s)

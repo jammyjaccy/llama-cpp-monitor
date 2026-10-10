@@ -35,8 +35,8 @@ _trigger_lock = threading.Lock()
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    # ADR-0004：.env 缺失时拒绝启动（load_settings 依赖模型默认值，必须先校验）
-    config.ensure_model_defaults()
+    # ADR-0004/0006：.env 缺失（含缺 PROXY）时拒绝启动（load_settings 依赖 .env 默认值，必须先校验）
+    config.ensure_env_defaults()
     database.init_db()
     with database.get_session() as db:
         s = config.load_settings(db)

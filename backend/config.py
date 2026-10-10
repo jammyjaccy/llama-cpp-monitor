@@ -1,9 +1,9 @@
 """配置：settings 表读写 + 默认值。
 
-模型默认三项（base_url / api_key / model_name）来自项目根 `.env`
-（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，ADR-0004）：仓库提交
-`.env.example` 模板，`.env` 不入库；`.env` 缺失时应用启动报错并拒绝启动；
-彻底放弃 Hermes 配置来源。
+`.env` 派生默认（ADR-0004 模型三项 + ADR-0006 代理）来自项目根 `.env`：
+`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME` / `PROXY`。仓库提交
+`.env.example` 模板，`.env` 不入库；`.env` 缺失（或缺 `PROXY` 键）时应用
+启动报错并拒绝启动；彻底放弃 Hermes 配置来源。
 
 优先级：页面 settings 值 > `.env`。settings 表只存「页面显式改过的值」，
 `.env` 作为默认来源每次加载时实时读取（不落库），因此改 `.env` 重启即生效。
@@ -19,11 +19,11 @@ from sqlalchemy.orm import Session
 
 from backend.models import Setting
 
-# 静态默认项（与模型无关，长期固定）
+# 静态默认项（与 .env 无关，长期固定）。
+# 注意：proxy 不在这里——其默认值来自 .env 的 PROXY 键（ADR-0006）。
 STATIC_DEFAULTS: dict[str, str] = {
     "interval_minutes": "120",
     "baseline_tag": "b11514",
-    "proxy": "http://127.0.0.1:7897",
     "launch_command": (
         "D:\\llama-cpp-hub\\llama.cpp-hub-v0.9.8.3-windows-cuda12\\llamacpp\\"
         "llama-b11514-bin-win-cuda-12.4-x64\\llama-server.exe "
@@ -45,8 +45,11 @@ STATIC_DEFAULTS: dict[str, str] = {
 # 模型三项键（默认值来自 .env）
 MODEL_KEYS = ["model_base_url", "model_api_key", "model_name"]
 
-# 可编辑键 = 静态项 + 模型三项（派生，避免双份维护）
-EDITABLE_KEYS = list(STATIC_DEFAULTS) + MODEL_KEYS
+# .env 派生默认键 = 模型三项 + 代理（proxy 默认来自 .env 的 PROXY 键，ADR-0006）
+ENV_KEYS = MODEL_KEYS + ["proxy"]
+
+# 可编辑键 = 静态项 + .env 派生项（派生，避免双份维护）
+EDITABLE_KEYS = list(STATIC_DEFAULTS) + ENV_KEYS
 
 
 class EnvMissingError(Exception):
@@ -70,47 +73,54 @@ def _default_env_path() -> str:
 
 
 def load_env(env_path: str | None = None) -> dict[str, str]:
-    """读取项目 .env 的模型默认三项。文件缺失抛 EnvMissingError。
+    """读取项目 .env 的默认值（模型三项 + 代理）。文件缺失抛 EnvMissingError。
 
-    文件存在但某键缺失、或键存在但无值（裸键）时该项取空串
-    （不阻断启动，页面可补配）。
+    模型三项：键缺失或裸键（无值）时取空串（不阻断启动，页面可补配）。
+    代理（PROXY）：缺失或空值时抛 EnvMissingError 并指明键名（ADR-0006，比模型三键更严）。
     """
     path = env_path or _default_env_path()
     if not os.path.isfile(path):
         raise EnvMissingError(
-            f"未找到项目 .env（{path}）。请复制 .env.example 为 .env 并填写 MODEL_* 三项。"
+            f"未找到项目 .env（{path}）。请复制 .env.example 为 .env 并填写 MODEL_* 三项与 PROXY。"
         )
     values = dotenv_values(path)
+    proxy = values.get("PROXY")
+    if not proxy:
+        raise EnvMissingError(
+            "项目 .env 缺少 PROXY 键（或值为空）。请在 .env 中设置 PROXY（完整代理 URL，"
+            "如 http://127.0.0.1:7897）。"
+        )
     return {
         "model_base_url": values.get("MODEL_BASE_URL") or "",
         "model_api_key": values.get("MODEL_API_KEY") or "",
         "model_name": values.get("MODEL_NAME") or "",
+        "proxy": proxy,
     }
 
 
-# 模块级缓存：启动时由 ensure_model_defaults 填充，之后 load_settings 复用。
-_MODEL_DEFAULTS: dict[str, str] | None = None
+# 模块级缓存：启动时由 ensure_env_defaults 填充，之后 load_settings 复用。
+_ENV_DEFAULTS: dict[str, str] | None = None
 
 
-def ensure_model_defaults() -> dict[str, str]:
-    """启动时调用：从默认路径加载 .env 到模块缓存（幂等）。
+def ensure_env_defaults() -> dict[str, str]:
+    """启动时调用：从默认路径加载 .env（模型三项 + 代理）到模块缓存（幂等）。
 
     缺失时抛 EnvMissingError 拒绝启动。无参数——缓存已填充后路径不可切换，
     避免「传了路径却被忽略」的契约陷阱。
     """
-    global _MODEL_DEFAULTS
-    if _MODEL_DEFAULTS is None:
-        _MODEL_DEFAULTS = load_env()
-    return _MODEL_DEFAULTS
+    global _ENV_DEFAULTS
+    if _ENV_DEFAULTS is None:
+        _ENV_DEFAULTS = load_env()
+    return _ENV_DEFAULTS
 
 
-def _model_defaults() -> dict[str, str]:
-    return ensure_model_defaults()
+def _env_defaults() -> dict[str, str]:
+    return ensure_env_defaults()
 
 
 def _defaults() -> dict[str, str]:
     d = dict(STATIC_DEFAULTS)
-    d.update(_model_defaults())
+    d.update(_env_defaults())
     return d
 
 

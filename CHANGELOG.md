@@ -14,13 +14,14 @@
   2. **端口约定**：后端（uvicorn）= 5000 **已实现**（start.bat + 全引用同步）；前端 dev（vite）= 5100 **已实现**（#12，vite 配置 + 代理 + CORS）
   3. 明确**不删数据**（已核实代码无任何删 versions/runs 逻辑，增量模型本就只增不删）；launch_command 默认值**不动**（仅 LLM 分析输入，不执行）
 - **执行票进展**（父 issue #9，互不阻塞）：#10 T8 基线自动推进 **已完成**；#11 T9 后端 5000 + start.bat **已完成**；#12 T10 前端 dev 5100 + 代理 **已完成**（见「已完成」2026-10-10 条目）
+- **执行票进展**（父 issue #13）：#14 T11 代理默认值 .env 化（ADR-0006）**已完成**（见「已完成」2026-10-10 条目）
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
-  2. **ADR-0006 实现**：`config.py` 把 `proxy` 从 `STATIC_DEFAULTS` 移入 `.env` 派生默认（`PROXY` 键，缺失拒绝启动）；`fetcher.py` 构造器默认改引用 `.env` 派生默认；`.env` 需补 `PROXY` 键（用户本机操作）
   3. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
 
+- 2026-10-10: **T11 代理默认值 .env 化（ADR-0006，issue #14）实现**——`config.py`：`STATIC_DEFAULTS` 去掉 `proxy`；`load_env` 增加 `PROXY` 键读取（缺失/空值抛 `EnvMissingError` 指明键名，比模型三键取空串更严）；`_MODEL_DEFAULTS`/`ensure_model_defaults`/`_model_defaults` 重命名为 `_ENV_DEFAULTS`/`ensure_env_defaults`/`_env_defaults`（语义：加载全部 .env 派生默认）；`ENV_KEYS = MODEL_KEYS + ["proxy"]`，`EDITABLE_KEYS` 派生（proxy 保持可编辑）。`fetcher.py`：构造器默认 `proxy=None`→引用 `config._env_defaults()["proxy"]`（代码无第二份硬编码代理地址），新增 `self.proxy` 实例属性作可测接缝。`main.py` lifespan 改调 `ensure_env_defaults()`。测试：test_config 既有 monkeypatch 接缝（`_ENV_DEFAULTS` 注入）+ 缺键/空值抛错 + 默认取自注入 + 页面覆盖优先 + 默认不落库；test_fetcher 加 fetcher 默认经 `.env` 派生 + 显式传入优先 + 源码无硬编码代理；test_api/test_runner fixture 同步（`_ENV_DEFAULTS` + proxy）。`.env.example` 已含 `PROXY` 行（核验）、真实 `.env` 已有 `PROXY` 键。前端零改动。全量测试 87 通过（78+9）、ruff 通过
 - 2026-10-10: **proxy 默认值改由 .env 提供（ADR-0006，设计已对齐，文档已落盘）**——`.env` 新增 `PROXY` 键（完整 URL）；优先级页面值 > `.env`（同 ADR-0004 机制）；`.env` 缺失 `PROXY` 键拒绝启动；`fetcher.py` 构造器默认改引用 `.env` 派生默认（消灭双源）；前端页面不动。文档：ADR-0006 + `.env.example` + design.md（ADR 列表/配置表）+ spec.md（settings 表/Further Notes）+ GLOSSARY「基线」修正（删除与 ADR-0005 矛盾的"基线本身不入库"）。**代码未动，待实现**
 - 2026-10-10: **两轴 code-review（6e2b8c2...HEAD）后文档修正**——spec #9 单调性论证缺陷修复：「下界保证严格递增」对 reanalyze 路径不成立（补分析可处理低于当前基线的版本），spec.md 管线第 4 步、ADR-0005 后果、design.md §5.2 改为「显式比较是单调性的实际保证」；spec.md Further Notes「基线本身不入库」更正为「存于 settings 表 baseline_tag」（runner 自动推进会落库）。代码未动（实现本就带显式比较，行为正确）。Standards 轴判断项 2（proxy 默认双源）用户决定不处理
 - 2026-10-09: setup-matt-pocock-skills 配置（CLAUDE.md Agent skills 块 + docs/agents/* + GitHub triage 标签 5 个）

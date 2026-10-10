@@ -19,11 +19,12 @@ def client(tmp_path, monkeypatch):
     TestingSession = sessionmaker(bind=engine, future=True, expire_on_commit=False)
     monkeypatch.setattr(database, "engine", engine)
     monkeypatch.setattr(database, "SessionLocal", TestingSession)
-    # ADR-0004：lifespan 会 ensure_model_defaults()（读真实 .env）；测试注入固定值
-    monkeypatch.setattr(config, "_MODEL_DEFAULTS", {
+    # ADR-0004/0006：lifespan 会 ensure_env_defaults()（读真实 .env）；测试注入固定值
+    monkeypatch.setattr(config, "_ENV_DEFAULTS", {
         "model_base_url": "http://localhost:4000",
         "model_api_key": "env-key",
         "model_name": "Swift-Qwen3.8-27B",
+        "proxy": "http://127.0.0.1:7897",
     })
     with TestClient(app) as c:
         with TestingSession() as s:
