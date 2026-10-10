@@ -18,7 +18,8 @@
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
   2. ~~**任务时间显示差 8 小时**~~ **已解决**（2026-10-10）：前端显示层转本地时间（方案 1），见「已完成」
-  3. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
+  3. **CI 护栏**（2026-10-10 retro 决定）：GitHub Actions 跑 ruff + pytest + 前端 build（含 vue-tsc）。handoff：`docs/handoff/handoff-ci-guardrail.md`
+  4. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
 

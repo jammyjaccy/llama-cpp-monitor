@@ -22,8 +22,13 @@ Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/d
 
 ### Python
 
-- 本项目使用 **conda 虚拟环境 `llamacpp-monitor`**：运行、安装依赖、跑测试都在此环境（`conda activate llamacpp-monitor`）
+- 本项目使用 **conda 虚拟环境 `llamacpp-monitor`**：运行、安装依赖、跑测试都在此环境。解释器绝对路径：`H:\conda_envs\llamacpp-monitor\python.exe`（bash 里 `/h/conda_envs/llamacpp-monitor/python.exe`；不在 `C:\Users\...\miniconda3\envs\` 下，别猜）
 - 后端依赖以根目录 `requirements.txt` 为准；前端 Node 依赖以 `frontend/package.json` 为准
+
+### 护栏
+
+- CI（`.github/workflows/ci.yml`）在 push/PR 时跑 `ruff check` + `pytest` + 前端 `vue-tsc && vite build`；本地提交前手动跑同三件套即可
+- 时间戳约定：后端一律存 UTC 字符串（`models.utcnow()`），显示层负责转本地时区（2026-10-10 任务时间显示 bug 的根因约定，见 CHANGELOG 当日条目）
 
 ### 进度记录
 
