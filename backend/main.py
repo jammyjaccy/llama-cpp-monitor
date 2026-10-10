@@ -51,7 +51,7 @@ async def _lifespan(_app: FastAPI):
 app = FastAPI(title="llama-cpp-monitor", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_origins=["http://127.0.0.1:5100", "http://localhost:5100"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
