@@ -56,7 +56,7 @@
 - `versions`：每个版本一条。tag（唯一）、published_at、commit_count、commits_raw（完整 commit 列表原文）、positive_items（LLM 正提升条目，JSON）、launch_impact（启动影响分析，JSON）、suggested_flags（建议 flag，JSON）、help_diffed（0/1）、analyzed（0/1）、created_at。
 - `new_commands`：新增命令单独记录。tag、flag、source（text | help-diff）、description；(tag, flag, source) 唯一。
 - `runs`：每次运行一条。started_at、ended_at、trigger（scheduled | manual）、status（ok | partial | failed）、versions_processed（JSON 数组）、error。
-- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514，任务 ok 且处理了版本时自动前移为本次最大版本，见 ADR-0005）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7897）、launch_command（用户启动命令原文，见设计文档附录）。
+- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514，任务 ok 且处理了版本时自动前移为本次最大版本，见 ADR-0005）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认值来自项目 `.env` 的 `PROXY`，完整 URL，页面值优先，见 ADR-0006）、launch_command（用户启动命令原文，见设计文档附录）。
 
 **数据源（已验证的事实）**
 
@@ -108,7 +108,8 @@
 ## Further Notes
 
 - 设计文档：`docs/design.md`（含完整流程图、配置表、用户启动命令原文附录）。
-- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0005`。
+- 领域术语以 `GLOSSARY.md` 为准；架构决策见 `docs/adr/0001-0006`。
 - LLM 默认模型来自项目 `.env`（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`），仓库提供 `.env.example` 模板，`.env` 本身不入库；页面配置可覆盖（页面值优先）；`.env` 缺失时启动报错拒绝启动（ADR-0004）。
+- GitHub 访问代理默认值来自项目 `.env` 的 `PROXY`（完整 URL），页面值优先；`.env` 缺失 `PROXY` 键时启动报错拒绝启动（ADR-0006）。
 - 基线默认 b11514，存于 settings 表 baseline_tag，任务 ok 且处理了版本时自动前移（ADR-0005）。
 - 端口约定：后端（uvicorn）= 5000，前端 dev（vite）= 5100；启动脚本 `start.bat` 一键拉起。

@@ -62,7 +62,7 @@
 - 调度：**应用内置**（APScheduler，ADR-0002），页面可改间隔、可点「立即执行」
 - Python 环境：**conda 虚拟环境 `llamacpp-monitor`**，项目所有依赖装在此环境，运行也用它；后端依赖写入根目录 `requirements.txt`（前端 Node 依赖由 package.json 管理）
 
-**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff、0004 模型默认配置存 .env、0005 基线自动推进为持久进度游标。
+**ADR**：架构决策记录见 `docs/adr/`——0001 前后端分离、0002 内置调度、0003 条件 help-diff、0004 模型默认配置存 .env、0005 基线自动推进为持久进度游标、0006 代理默认值存 .env。
 
 **目录约定**：后端代码目录为 `backend/`（原 `app/` 重命名，import 与文档引用同步更新）。
 
@@ -179,7 +179,7 @@ settings(
 | `interval_minutes` | 120 | 任务间隔，页面可调 |
 | `baseline_tag` | b11514 | 首次运行基线 |
 | `model_base_url` / `model_api_key` / `model_name` | **项目自带默认模型配置，存于 `.env`**（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，见 ADR-0004；仓库提供 `.env.example` 模板，`.env` 不入库） | 分析用 LLM，页面可改（页面值优先于 .env）；`.env` 缺失时启动报错拒绝启动 |
-| `proxy` | `http://127.0.0.1:7897` | GitHub 访问代理 |
+| `proxy` | 默认值来自项目 `.env` 的 `PROXY`（完整 URL，如 `http://127.0.0.1:7897`），页面值优先（ADR-0006） | GitHub 访问代理 |
 | `launch_command` | 用户提供的 llama-server.exe 命令（原文存档于本文件附录） | 影响分析输入 |
 | DB 路径 | `H:\data\llamacpp-monitor\monitor.db` | |
 

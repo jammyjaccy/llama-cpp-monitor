@@ -16,10 +16,12 @@
 - **执行票进展**（父 issue #9，互不阻塞）：#10 T8 基线自动推进 **已完成**；#11 T9 后端 5000 + start.bat **已完成**；#12 T10 前端 dev 5100 + 代理 **已完成**（见「已完成」2026-10-10 条目）
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
+  2. **ADR-0006 实现**：`config.py` 把 `proxy` 从 `STATIC_DEFAULTS` 移入 `.env` 派生默认（`PROXY` 键，缺失拒绝启动）；`fetcher.py` 构造器默认改引用 `.env` 派生默认；`.env` 需补 `PROXY` 键（用户本机操作）
   3. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
 
+- 2026-10-10: **proxy 默认值改由 .env 提供（ADR-0006，设计已对齐，文档已落盘）**——`.env` 新增 `PROXY` 键（完整 URL）；优先级页面值 > `.env`（同 ADR-0004 机制）；`.env` 缺失 `PROXY` 键拒绝启动；`fetcher.py` 构造器默认改引用 `.env` 派生默认（消灭双源）；前端页面不动。文档：ADR-0006 + `.env.example` + design.md（ADR 列表/配置表）+ spec.md（settings 表/Further Notes）+ GLOSSARY「基线」修正（删除与 ADR-0005 矛盾的"基线本身不入库"）。**代码未动，待实现**
 - 2026-10-10: **两轴 code-review（6e2b8c2...HEAD）后文档修正**——spec #9 单调性论证缺陷修复：「下界保证严格递增」对 reanalyze 路径不成立（补分析可处理低于当前基线的版本），spec.md 管线第 4 步、ADR-0005 后果、design.md §5.2 改为「显式比较是单调性的实际保证」；spec.md Further Notes「基线本身不入库」更正为「存于 settings 表 baseline_tag」（runner 自动推进会落库）。代码未动（实现本就带显式比较，行为正确）。Standards 轴判断项 2（proxy 默认双源）用户决定不处理
 - 2026-10-09: setup-matt-pocock-skills 配置（CLAUDE.md Agent skills 块 + docs/agents/* + GitHub triage 标签 5 个）
 - 2026-10-09: 设计拷问（grill-me / grill-with-docs）→ spec（issue #1）→ 7 张执行票（issue #2-#8）
