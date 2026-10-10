@@ -17,11 +17,12 @@
 - **执行票进展**（父 issue #13）：#14 T11 代理默认值 .env 化（ADR-0006）**已完成**（见「已完成」2026-10-10 条目）
 - **待办**：
   1. 用户填入 `.env` 的 `MODEL_API_KEY` 后触发一次真实任务，验证 LLM 分析链路
-  2. **任务时间显示差 8 小时**（2026-10-10 定位）：后端存 UTC 正确，前端 `TasksView.vue` 未做时区转换直接显示。方案 1（用户已批准）：仅前端显示层转本地时间，后端/数据不动。handoff：`docs/handoff/handoff-time-display-tz.md`
+  2. ~~**任务时间显示差 8 小时**~~ **已解决**（2026-10-10）：前端显示层转本地时间（方案 1），见「已完成」
   3. ~~**proxy 默认值双源分叉**~~ **已解决**（2026-10-10）：`fetcher.py` 构造器默认、spec/design 文档、前端 placeholder 全部 7981→7897，与 `STATIC_DEFAULTS.proxy` 一致
 
 ## 已完成
 
+- 2026-10-10: **任务时间显示改为本地时区（方案 1）**——根因：后端 `utcnow()` 存 UTC 字符串（正确，不动），前端 `TasksView.vue` 裸字符串原样显示未做时区转换，导致与系统时钟差 8 小时（UTC+8）。修复：新增 `frontend/src/utils/format.ts` 的 `formatLocalTime()`（补 `'Z'` 按 UTC 解析 → 格式化本地 `YYYY-MM-DD HH:mm:ss`；空值显示 `—`，解析失败原样显示不抛异常），`TasksView.vue` 开始/结束时间两列复用。后端、数据、其他页面零改动，老数据自动兼容。前端无测试设施（无 vitest/jest），按 handoff 约定跳过单测。`npm run build`（含 vue-tsc 类型检查）通过
 - 2026-10-10: **T11 code-review 代码侧修复（2 处）**——①fetcher 跨模块调私有名：`config.py` 新增公开薄函数 `env_default(key)`（内部调 `ensure_env_defaults()`），`fetcher.py` 改调 `config.env_default("proxy")`；`_env_defaults()` 保留（config 内部 `_defaults()` 仍在用）。②测试断言内部结构：`test_proxy_default_from_env` 删除 `assert "proxy" not in config.STATIC_DEFAULTS`（行为已由 `s.proxy == ...` 外部断言覆盖）。全量测试 87 通过（不增不减）、ruff 通过
 - 2026-10-10: **T11 两轴 code-review（fc1d38d...HEAD）后文档修正**——spec issue #13 测试决策引用的接缝名 `_MODEL_DEFAULTS` 已随 T11 重命名为 `_ENV_DEFAULTS`，issue body 同步新名（含先例测试名 `test_ensure_env_defaults_missing_raises`）；机制与注入点未变，非新增接缝。代码未动。代码侧修复（测试断言内部结构、fetcher 跨模块调私有名）另交 Claude Code 处理
 - 2026-10-10: **T11 代理默认值 .env 化（ADR-0006，issue #14）实现**——`config.py`：`STATIC_DEFAULTS` 去掉 `proxy`；`load_env` 增加 `PROXY` 键读取（缺失/空值抛 `EnvMissingError` 指明键名，比模型三键取空串更严）；`_MODEL_DEFAULTS`/`ensure_model_defaults`/`_model_defaults` 重命名为 `_ENV_DEFAULTS`/`ensure_env_defaults`/`_env_defaults`（语义：加载全部 .env 派生默认）；`ENV_KEYS = MODEL_KEYS + ["proxy"]`，`EDITABLE_KEYS` 派生（proxy 保持可编辑）。`fetcher.py`：构造器默认 `proxy=None`→引用 `config._env_defaults()["proxy"]`（代码无第二份硬编码代理地址），新增 `self.proxy` 实例属性作可测接缝。`main.py` lifespan 改调 `ensure_env_defaults()`。测试：test_config 既有 monkeypatch 接缝（`_ENV_DEFAULTS` 注入）+ 缺键/空值抛错 + 默认取自注入 + 页面覆盖优先 + 默认不落库；test_fetcher 加 fetcher 默认经 `.env` 派生 + 显式传入优先 + 源码无硬编码代理；test_api/test_runner fixture 同步（`_ENV_DEFAULTS` + proxy）。`.env.example` 已含 `PROXY` 行（核验）、真实 `.env` 已有 `PROXY` 键。前端零改动。全量测试 87 通过（78+9）、ruff 通过

@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useMonitorStore } from '../stores/monitor'
 import { useSettingsStore } from '../stores/settings'
+import { formatLocalTime } from '../utils/format'
 
 const monitor = useMonitorStore()
 const settings = useSettingsStore()
@@ -82,9 +83,11 @@ onUnmounted(() => {
 
     <el-table :data="monitor.runs" v-loading="monitor.loading" stripe>
       <el-table-column prop="id" label="#" width="60" />
-      <el-table-column prop="started_at" label="开始时间" width="170" />
+      <el-table-column prop="started_at" label="开始时间" width="170">
+        <template #default="{ row }">{{ formatLocalTime(row.started_at) }}</template>
+      </el-table-column>
       <el-table-column prop="ended_at" label="结束时间" width="170">
-        <template #default="{ row }">{{ row.ended_at ?? '—' }}</template>
+        <template #default="{ row }">{{ formatLocalTime(row.ended_at) }}</template>
       </el-table-column>
       <el-table-column label="触发方式" width="100">
         <template #default="{ row }">{{ triggerLabel(row.trigger) }}</template>
