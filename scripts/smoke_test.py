@@ -10,7 +10,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.config import EnvMissingError, load_env  # noqa: E402
 
-BASE = "http://127.0.0.1:8765"
+BASE = "http://127.0.0.1:5000"
 
 
 def get_api_key() -> str:
