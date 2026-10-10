@@ -56,7 +56,7 @@
 - `versions`：每个版本一条。tag（唯一）、published_at、commit_count、commits_raw（完整 commit 列表原文）、positive_items（LLM 正提升条目，JSON）、launch_impact（启动影响分析，JSON）、suggested_flags（建议 flag，JSON）、help_diffed（0/1）、analyzed（0/1）、created_at。
 - `new_commands`：新增命令单独记录。tag、flag、source（text | help-diff）、description；(tag, flag, source) 唯一。
 - `runs`：每次运行一条。started_at、ended_at、trigger（scheduled | manual）、status（ok | partial | failed）、versions_processed（JSON 数组）、error。
-- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514，任务 ok 且处理了版本时自动前移为本次最大版本，见 ADR-0005）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7981）、launch_command（用户启动命令原文，见设计文档附录）。
+- `settings`：键值配置。interval_minutes（默认 120）、baseline_tag（默认 b11514，任务 ok 且处理了版本时自动前移为本次最大版本，见 ADR-0005）、model_base_url / model_api_key / model_name（默认值来自项目 `.env` 的 `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，页面值优先，见 ADR-0004）、proxy（默认 http://127.0.0.1:7897）、launch_command（用户启动命令原文，见设计文档附录）。
 
 **数据源（已验证的事实）**
 

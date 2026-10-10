@@ -76,7 +76,7 @@ onMounted(async () => {
       <el-divider>网络与启动命令</el-divider>
 
       <el-form-item label="代理地址">
-        <el-input v-model="form.proxy" placeholder="http://127.0.0.1:7981" />
+        <el-input v-model="form.proxy" placeholder="http://127.0.0.1:7897" />
       </el-form-item>
 
       <el-form-item label="启动命令">

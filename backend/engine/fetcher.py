@@ -47,9 +47,9 @@ def newer_releases(
 
 
 class Fetcher:
-    """GitHub API 客户端。代理地址可配置（默认 http://127.0.0.1:7981）。"""
+    """GitHub API 客户端。代理地址可配置（默认 http://127.0.0.1:7897）。"""
 
-    def __init__(self, proxy: str = "http://127.0.0.1:7981", token: str | None = None):
+    def __init__(self, proxy: str = "http://127.0.0.1:7897", token: str | None = None):
         headers = {"Accept": "application/vnd.github+json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"

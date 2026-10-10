@@ -28,7 +28,7 @@
 | 发版频率 | 约 3-4 版/天，tag 格式 `bNNNNN` |
 | release body | **不含完整 commit 列表**（仅最新一条 commit 标题 + 各平台下载链接） |
 | 完整变更来源 | compare API：`/repos/ggml-org/llama.cpp/compare/b{N-1}...b{N}`，返回 `total_commits` + 每条 commit 消息，已验证可用 |
-| 网络 | 直连 GitHub 301，需走本地代理 `http://127.0.0.1:7981`（代理做成配置项） |
+| 网络 | 直连 GitHub 301，需走本地代理 `http://127.0.0.1:7897`（代理做成配置项） |
 | 用户当前版本 | b11514，经 llama.cpp-hub v0.9.8.3 分发，3×CUDA + MTP 投机解码 + flash-attn |
 | 用户启动命令 | 见 §8 配置（llama-server.exe，关键 flag：`--spec-type draft-mtp --flash-attn on --split-mode layer --tensor-split --ctx-checkpoints --load-mode dio --fit` 等） |
 | Python | 3.14.7 / uv |
@@ -179,7 +179,7 @@ settings(
 | `interval_minutes` | 120 | 任务间隔，页面可调 |
 | `baseline_tag` | b11514 | 首次运行基线 |
 | `model_base_url` / `model_api_key` / `model_name` | **项目自带默认模型配置，存于 `.env`**（`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`，见 ADR-0004；仓库提供 `.env.example` 模板，`.env` 不入库） | 分析用 LLM，页面可改（页面值优先于 .env）；`.env` 缺失时启动报错拒绝启动 |
-| `proxy` | `http://127.0.0.1:7981` | GitHub 访问代理 |
+| `proxy` | `http://127.0.0.1:7897` | GitHub 访问代理 |
 | `launch_command` | 用户提供的 llama-server.exe 命令（原文存档于本文件附录） | 影响分析输入 |
 | DB 路径 | `H:\data\llamacpp-monitor\monitor.db` | |
 
