@@ -29,7 +29,7 @@ def test_load_fills_defaults(db):
     s = config.load_settings(db)
     assert s.interval_minutes == 120
     assert s.baseline_tag == "b11514"
-    assert s.proxy == "http://127.0.0.1:7981"
+    assert s.proxy == "http://127.0.0.1:7897"
     assert s.model_name == "Swift-Qwen3.8-27B"
     assert "--spec-type draft-mtp" in s.launch_command
 

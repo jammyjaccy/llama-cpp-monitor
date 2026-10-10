@@ -14,7 +14,7 @@ from backend.engine.fetcher import newer_releases, tag_number
 from backend.engine.helpdiff_exec import HelpCache, download_help
 from backend.engine.llm import LLMError
 from backend.engine.textscan import scan_new_flags
-from backend.models import NewCommand, Run, Version, utcnow
+from backend.models import NewCommand, Run, Setting, Version, utcnow
 
 
 class BusyError(Exception):
@@ -230,6 +230,15 @@ class Runner:
             run.ended_at = utcnow()
             run.versions_processed = json.dumps(processed, ensure_ascii=False)
             run.error = error
+            # ADR-0005：ok 且处理了至少一个版本时，基线推进为本次处理的最大版本
+            # （持久进度游标；partial/failed 不推进，0 版本不写库）
+            if status == "ok" and processed:
+                max_tag = max(processed, key=tag_number)
+                row = db.get(Setting, "baseline_tag")
+                if row is None:
+                    row = Setting(key="baseline_tag")
+                    db.add(row)
+                row.value = max_tag
             db.commit()
 
 

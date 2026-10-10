@@ -21,7 +21,7 @@ from backend.models import Setting
 STATIC_DEFAULTS: dict[str, str] = {
     "interval_minutes": "120",
     "baseline_tag": "b11514",
-    "proxy": "http://127.0.0.1:7981",
+    "proxy": "http://127.0.0.1:7897",
     "launch_command": (
         "D:\\llama-cpp-hub\\llama.cpp-hub-v0.9.8.3-windows-cuda12\\llamacpp\\"
         "llama-b11514-bin-win-cuda-12.4-x64\\llama-server.exe "

@@ -13,7 +13,7 @@ from backend import config
 from backend.database import Base
 from backend.engine.llm import LLMError
 from backend.engine.runner import BusyError, Runner
-from backend.models import NewCommand, Version
+from backend.models import NewCommand, Setting, Version
 
 
 class FakeFetcher:
@@ -322,12 +322,32 @@ def test_llm_failure_marks_partial_and_reanalyzes_later(env):
         assert v.analyzed == 1
 
 
+def test_partial_does_not_advance_baseline(env):
+    """ADR-0005：partial（部分版本未分析完）不推进基线。"""
+    fetcher = FakeFetcher(RELEASES, COMPARE)
+    runner = make_runner(env, fetcher, FakeLLM(fail=True))
+    run = runner.run("manual")
+    assert run.status == "partial"
+    with env() as s:
+        assert config.load_settings(s).baseline_tag == "b11514"
+
+
 def test_github_failure_marks_failed(env):
     fetcher = FakeFetcher(fail=True)
     runner = make_runner(env, fetcher, FakeLLM())
     run = runner.run("manual")
     assert run.status == "failed"
     assert "GitHub unreachable" in (run.error or "")
+
+
+def test_failed_does_not_advance_baseline(env):
+    """ADR-0005：failed（GitHub 不可达）不推进基线。"""
+    fetcher = FakeFetcher(fail=True)
+    runner = make_runner(env, fetcher, FakeLLM())
+    run = runner.run("manual")
+    assert run.status == "failed"
+    with env() as s:
+        assert config.load_settings(s).baseline_tag == "b11514"
 
 
 def test_reentry_rejected(env):
@@ -343,6 +363,17 @@ def test_reentry_rejected(env):
         runner_mod._release()
 
 
+def test_ok_advances_baseline_to_max_processed(env):
+    """ADR-0005：ok 且处理了版本时，baseline 推进为本次处理的最大版本。"""
+    fetcher = FakeFetcher(RELEASES, COMPARE)
+    runner = make_runner(env, fetcher, FakeLLM())
+    run = runner.run("manual")
+    assert run.status == "ok"
+    assert json.loads(run.versions_processed) == ["b11518", "b11519"]
+    with env() as s:
+        assert config.load_settings(s).baseline_tag == "b11519"
+
+
 def test_no_new_versions_run_ok(env):
     fetcher = FakeFetcher(RELEASES, COMPARE)
     runner = make_runner(env, fetcher, FakeLLM())
@@ -350,6 +381,33 @@ def test_no_new_versions_run_ok(env):
     run2 = runner.run("manual")
     assert run2.status == "ok"
     assert json.loads(run2.versions_processed) == []
+
+
+def test_zero_versions_no_baseline_row(env):
+    """ADR-0005：处理 0 个版本（无新 release）时不写库——settings 表无 baseline_tag 行。"""
+    fetcher = FakeFetcher([], {})
+    runner = make_runner(env, fetcher, FakeLLM())
+    run = runner.run("manual")
+    assert run.status == "ok"
+    assert json.loads(run.versions_processed) == []
+    with env() as s:
+        assert s.get(Setting, "baseline_tag") is None
+        # 默认值仍来自 STATIC_DEFAULTS
+        assert config.load_settings(s).baseline_tag == "b11514"
+
+
+def test_manual_larger_baseline_not_overwritten(env):
+    """ADR-0005 单调性：手动设的更大 baseline 不被压过（下界天然保证）。"""
+    with env() as s:
+        config.update_settings(s, {"baseline_tag": "b11520"})
+    # releases 全部低于手动 baseline：无版本可处理，不写库
+    fetcher = FakeFetcher(RELEASES, COMPARE)
+    runner = make_runner(env, fetcher, FakeLLM())
+    run = runner.run("manual")
+    assert run.status == "ok"
+    assert json.loads(run.versions_processed) == []
+    with env() as s:
+        assert config.load_settings(s).baseline_tag == "b11520"
 
 
 def test_skipped_tag_number_uses_actual_prev(env):
