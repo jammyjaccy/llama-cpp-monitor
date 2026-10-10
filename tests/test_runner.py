@@ -410,6 +410,25 @@ def test_manual_larger_baseline_not_overwritten(env):
         assert config.load_settings(s).baseline_tag == "b11520"
 
 
+def test_reanalyze_below_manual_baseline_does_not_regress(env):
+    """ADR-0005 单调性：reanalyze 路径 tag 不受下界约束，ok run 不得把基线压回更低值。
+
+    场景：b11518 已入库但 analyzed=0（上次 LLM 失败），用户手动设 baseline=b11520
+    跳过 11518/11519，无新 release。补分析 b11518 成功后 run=ok，基线必须保持 b11520。
+    """
+    with env() as s:
+        s.add(Version(tag="b11518", analyzed=0, commits_raw="[]"))
+        s.commit()
+        config.update_settings(s, {"baseline_tag": "b11520"})
+    fetcher = FakeFetcher([], {})  # 无新 release
+    runner = make_runner(env, fetcher, FakeLLM())
+    run = runner.run("manual")
+    assert run.status == "ok"
+    assert json.loads(run.versions_processed) == ["b11518"]
+    with env() as s:
+        assert config.load_settings(s).baseline_tag == "b11520"
+
+
 def test_skipped_tag_number_uses_actual_prev(env):
     """tag 号不连续（b11520 不存在）：上一版取 release 列表中的实际前一个。"""
     releases = [

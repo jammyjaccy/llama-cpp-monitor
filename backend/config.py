@@ -7,6 +7,8 @@
 
 优先级：页面 settings 值 > `.env`。settings 表只存「页面显式改过的值」，
 `.env` 作为默认来源每次加载时实时读取（不落库），因此改 `.env` 重启即生效。
+例外：`baseline_tag` 由 runner 在任务 ok 时自动推进（ADR-0005 持久进度游标），
+非页面值也会落库，故会遮蔽 `STATIC_DEFAULTS["baseline_tag"]` 的默认变更。
 """
 import os
 from dataclasses import dataclass

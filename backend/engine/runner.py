@@ -231,14 +231,23 @@ class Runner:
             run.versions_processed = json.dumps(processed, ensure_ascii=False)
             run.error = error
             # ADR-0005：ok 且处理了至少一个版本时，基线推进为本次处理的最大版本
-            # （持久进度游标；partial/failed 不推进，0 版本不写库）
+            # （持久进度游标；partial/failed 不推进，0 版本不写库）。
+            # 严格递增：reanalyze 路径的 tag 不受下界约束，可能低于手动设的 baseline，
+            # 故写入前与当前生效基线比较，更小/相等不写（不倒退、不压过手动值）。
             if status == "ok" and processed:
                 max_tag = max(processed, key=tag_number)
                 row = db.get(Setting, "baseline_tag")
-                if row is None:
-                    row = Setting(key="baseline_tag")
-                    db.add(row)
-                row.value = max_tag
+                current = (row.value if (row is not None and row.value)
+                           else config.STATIC_DEFAULTS["baseline_tag"])
+                try:
+                    should_advance = tag_number(max_tag) > tag_number(current)
+                except ValueError:
+                    should_advance = False  # 当前基线非 bNNNNN：保守不覆盖用户值
+                if should_advance:
+                    if row is None:
+                        row = Setting(key="baseline_tag")
+                        db.add(row)
+                    row.value = max_tag
             db.commit()
 
 
