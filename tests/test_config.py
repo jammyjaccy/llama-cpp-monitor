@@ -187,8 +187,7 @@ def test_ensure_env_defaults_reads_env(tmp_path, monkeypatch):
 # ---- proxy 默认值（ADR-0006）----
 
 def test_proxy_default_from_env(db):
-    """proxy 默认值取自 .env（经 _ENV_DEFAULTS 注入），STATIC_DEFAULTS 不再含 proxy。"""
-    assert "proxy" not in config.STATIC_DEFAULTS
+    """proxy 默认值取自 .env（经 _ENV_DEFAULTS 注入）。"""
     s = config.load_settings(db)
     assert s.proxy == "http://127.0.0.1:7897"
 

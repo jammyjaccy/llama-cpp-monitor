@@ -118,6 +118,14 @@ def _env_defaults() -> dict[str, str]:
     return ensure_env_defaults()
 
 
+def env_default(key: str) -> str:
+    """对外暴露某个 .env 派生默认值（如 ``env_default("proxy")``）。
+
+    供其他模块（如 engine.fetcher）取默认值用，避免跨模块引用私有名。
+    """
+    return ensure_env_defaults()[key]
+
+
 def _defaults() -> dict[str, str]:
     d = dict(STATIC_DEFAULTS)
     d.update(_env_defaults())
