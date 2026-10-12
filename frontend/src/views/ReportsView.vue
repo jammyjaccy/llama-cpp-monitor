@@ -65,6 +65,9 @@ const analyzedType = (v: VersionOut) => (v.analyzed ? 'success' : 'warning')
 const diffTag = (v: VersionOut) => (v.help_diffed ? '已 diff' : '未完成')
 const diffType = (v: VersionOut) => (v.help_diffed ? 'success' : 'info')
 
+// 正提升条数：commit_notes 中 positive=true 的提交数（与提交数同口径，与详情页红色高亮一致）
+const positiveNoteCount = (v: VersionOut) => v.commit_notes.filter((n) => n.positive).length
+
 // commit_notes 的 sha 是 LLM 回填的，可能是完整 40 位或截断形式，
 // 与 commits_raw 的 sha 双向前缀匹配即视为同一条（ADR-0007）
 function noteMatches(noteSha: string, commitSha: string): boolean {
@@ -185,10 +188,11 @@ onMounted(loadList)
           <el-tag :type="diffType(row)">{{ diffTag(row) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="正提升" min-width="160">
+      <el-table-column label="正提升数据" min-width="220">
         <template #default="{ row }">
-          <span v-if="row.positive_items.length">{{ row.positive_items.length }} 条</span>
-          <span v-else class="muted">—</span>
+          <span>提交数：{{ row.commit_count ?? '—' }}条，</span>
+          <span v-if="row.analyzed" class="positive">正提升：{{ positiveNoteCount(row) }}条</span>
+          <span v-else class="muted">正提升：—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -271,5 +275,8 @@ onMounted(loadList)
 }
 .muted {
   color: #c0c4cc;
+}
+.positive {
+  color: #f56c6c;
 }
 </style>
