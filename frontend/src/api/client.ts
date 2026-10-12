@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type {
   RunOut,
+  ScheduleOut,
   SettingsOut,
   SettingsUpdate,
   VersionDetailOut,
@@ -43,5 +44,10 @@ export async function getSettings(): Promise<SettingsOut> {
 
 export async function updateSettings(update: SettingsUpdate): Promise<SettingsOut> {
   const { data } = await http.put<SettingsOut>('/settings', update)
+  return data
+}
+
+export async function getSchedule(): Promise<ScheduleOut> {
+  const { data } = await http.get<ScheduleOut>('/schedule')
   return data
 }

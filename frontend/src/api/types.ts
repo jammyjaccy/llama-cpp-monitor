@@ -73,3 +73,8 @@ export interface SettingsOut {
 }
 
 export type SettingsUpdate = Partial<SettingsOut>
+
+export interface ScheduleOut {
+  next_run_time: string | null
+  interval_minutes: number
+}

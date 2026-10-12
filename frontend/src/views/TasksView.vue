@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getSchedule } from '../api/client'
 import { useMonitorStore } from '../stores/monitor'
 import { useSettingsStore } from '../stores/settings'
 import { formatLocalTime } from '../utils/format'
@@ -11,6 +12,17 @@ const settings = useSettingsStore()
 // 顶部「立即执行」+ 间隔设置
 const interval = ref<number>(120)
 const savingInterval = ref(false)
+
+// 下次定时执行时间（UTC 字符串，#17 已转好，显示走 formatLocalTime）
+const nextRunTime = ref<string | null>(null)
+
+async function fetchSchedule() {
+  try {
+    nextRunTime.value = (await getSchedule()).next_run_time
+  } catch {
+    nextRunTime.value = null
+  }
+}
 
 const statusType = (s: string) =>
   ({ running: 'primary', ok: 'success', partial: 'warning', failed: 'danger' } as Record<string, 'primary' | 'success' | 'warning' | 'danger'>)[s] ?? 'info'
@@ -36,6 +48,8 @@ async function saveInterval() {
   try {
     await settings.save({ interval_minutes: interval.value })
     ElMessage.success('任务间隔已更新')
+    // reschedule 后 next fire time 会变，立即刷新
+    await fetchSchedule()
   } catch {
     ElMessage.error('更新失败')
   } finally {
@@ -47,7 +61,12 @@ async function saveInterval() {
 let timer: ReturnType<typeof setInterval> | null = null
 
 async function refresh() {
+  const wasBusy = monitor.busy
   await monitor.fetchRuns()
+  if (wasBusy && !monitor.busy) {
+    // 任务刚结束，下次执行时间可能已重排
+    await fetchSchedule()
+  }
   if (monitor.busy) {
     if (!timer) timer = setInterval(refresh, 5000)
   } else if (timer) {
@@ -57,7 +76,7 @@ async function refresh() {
 }
 
 onMounted(async () => {
-  await Promise.all([monitor.fetchRuns(), settings.fetch()])
+  await Promise.all([monitor.fetchRuns(), settings.fetch(), fetchSchedule()])
   interval.value = settings.settings?.interval_minutes ?? 120
   if (monitor.busy) await refresh()
 })
@@ -79,6 +98,7 @@ onUnmounted(() => {
         <span>分钟</span>
         <el-button size="default" :loading="savingInterval" @click="saveInterval">保存</el-button>
       </div>
+      <span class="next-run">下次定时执行：{{ formatLocalTime(nextRunTime) }}</span>
     </div>
 
     <el-table :data="monitor.runs" v-loading="monitor.loading" stripe>
@@ -124,6 +144,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.next-run {
+  color: #606266;
+  font-variant-numeric: tabular-nums;
 }
 .muted {
   color: #c0c4cc;
