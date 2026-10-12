@@ -65,6 +65,24 @@ const analyzedType = (v: VersionOut) => (v.analyzed ? 'success' : 'warning')
 const diffTag = (v: VersionOut) => (v.help_diffed ? '已 diff' : '未完成')
 const diffType = (v: VersionOut) => (v.help_diffed ? 'success' : 'info')
 
+// commit_notes 的 sha 是 LLM 回填的，可能是完整 40 位或截断形式，
+// 与 commits_raw 的 sha 双向前缀匹配即视为同一条（ADR-0007）
+function noteMatches(noteSha: string, commitSha: string): boolean {
+  const a = noteSha.toLowerCase()
+  const b = commitSha.toLowerCase()
+  return a.startsWith(b) || b.startsWith(a)
+}
+
+// 逐 commit 挂上对应 note；无 note 的 commit 降级为黑色无解释，孤儿 note 丢弃
+const notedCommits = computed(() => {
+  const list = detail.value?.commits_raw ?? []
+  const notes = detail.value?.commit_notes ?? []
+  return list.map((c) => ({
+    commit: c,
+    note: notes.find((n) => n.sha && c.sha && noteMatches(n.sha, c.sha)),
+  }))
+})
+
 watch(tag, (t) => (t ? loadDetail() : (detail.value = null)), { immediate: true })
 
 onMounted(loadList)
@@ -134,12 +152,13 @@ onMounted(loadList)
       </el-card>
 
       <el-card shadow="never" class="section">
-        <template #header>原始 commit 列表（{{ detail.commits_raw.length }}）</template>
+        <template #header>版本修改说明（{{ detail.commits_raw.length }}）</template>
         <el-empty v-if="!detail.commits_raw.length" description="无" :image-size="60" />
         <ul v-else class="commits">
-          <li v-for="c in detail.commits_raw" :key="c.sha">
-            <code class="sha">{{ c.sha?.slice(0, 8) }}</code>
-            <span>{{ c.commit?.message }}</span>
+          <li v-for="item in notedCommits" :key="item.commit.sha" :class="{ positive: item.note?.positive }">
+            <code class="sha">{{ item.commit.sha?.slice(0, 8) }}</code>
+            <span v-if="item.note" class="summary">{{ item.note.summary }}</span>
+            <span v-if="item.commit.commit?.message" class="message">{{ item.commit.commit.message }}</span>
           </li>
         </ul>
       </el-card>
@@ -229,6 +248,15 @@ onMounted(loadList)
 .commits li {
   padding: 4px 0;
   border-bottom: 1px solid #f0f2f5;
+}
+.commits li.positive {
+  color: #f56c6c;
+}
+.summary {
+  margin-right: 8px;
+}
+.message {
+  font-size: 13px;
 }
 .sha {
   color: #409eff;

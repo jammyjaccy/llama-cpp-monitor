@@ -18,12 +18,19 @@ export interface NewCommandOut {
   description: string | null
 }
 
+export interface CommitNote {
+  sha: string
+  summary: string
+  positive: boolean
+}
+
 export interface VersionOut {
   id: number
   tag: string
   published_at: string | null
   commit_count: number | null
   positive_items: PositiveItem[]
+  commit_notes: CommitNote[]
   launch_impact: Record<string, unknown>
   suggested_flags: SuggestedFlag[]
   help_diffed: number
