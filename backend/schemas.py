@@ -39,6 +39,11 @@ class NewCommandOut(BaseModel):
     description: str | None
 
 
+class ScheduleOut(BaseModel):
+    next_run_time: str | None
+    interval_minutes: int
+
+
 class SettingsOut(BaseModel):
     interval_minutes: int
     baseline_tag: str

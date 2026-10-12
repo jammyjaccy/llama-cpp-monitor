@@ -1,5 +1,6 @@
 """REST API 测试（TestClient，临时 DB）。"""
 import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -199,6 +200,56 @@ def test_version_out_serialization():
     # commit_notes 为空（None）时序列化为 []
     empty = _version_out(Version(tag="b2"))
     assert empty["commit_notes"] == []
+
+
+def _parse_utc(s: str) -> datetime:
+    return datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
+
+def test_schedule_shape(client):
+    """issue #17：GET /api/schedule 返回 200，含 next_run_time 与 interval_minutes。"""
+    import re
+    c, _ = client
+    r = c.get("/api/schedule")
+    assert r.status_code == 200
+    body = r.json()
+    assert "next_run_time" in body
+    assert "interval_minutes" in body
+    assert body["next_run_time"] is not None
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", body["next_run_time"])
+
+
+def test_schedule_interval_matches_settings(client):
+    """issue #17：interval_minutes 与 settings 一致；改间隔 reschedule 后 next_run_time 反映新间隔。"""
+    c, _ = client
+    r = c.get("/api/schedule")
+    assert r.json()["interval_minutes"] == 120
+
+    r = c.put("/api/settings", json={"interval_minutes": 30})
+    assert r.status_code == 200
+
+    r = c.get("/api/schedule")
+    body = r.json()
+    assert body["interval_minutes"] == 30
+    # reschedule 后 next_run_time 应在「现在」到「现在+30min」之间（新间隔）
+    now = datetime.now(timezone.utc)
+    nxt = _parse_utc(body["next_run_time"])
+    assert now <= nxt <= now + timedelta(minutes=30, seconds=5)
+
+
+def test_schedule_next_run_is_utc(client):
+    """issue #17：next_run_time 是 UTC 字符串，落在「现在」到「现在+间隔」之间。
+
+    测试环境是 UTC+8 机器：若裸 strftime（本地时间当 UTC），返回字符串会比真实
+    UTC 大 8 小时，此区间断言会抓出来。
+    """
+    c, _ = client
+    r = c.get("/api/schedule")
+    body = r.json()
+    interval = body["interval_minutes"]
+    now = datetime.now(timezone.utc)
+    nxt = _parse_utc(body["next_run_time"])
+    assert now <= nxt <= now + timedelta(minutes=interval, seconds=5)
 
 
 def test_spa_resolve_blocks_traversal(tmp_path, monkeypatch):

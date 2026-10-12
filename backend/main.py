@@ -6,6 +6,7 @@ import json
 import os
 import threading
 from contextlib import asynccontextmanager
+from datetime import timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,7 @@ from backend.models import NewCommand, Run, Version
 from backend.scheduler import MonitorScheduler
 from backend.schemas import (
     RunOut,
+    ScheduleOut,
     SettingsOut,
     SettingsUpdate,
     VersionDetailOut,
@@ -201,6 +203,25 @@ def put_settings(update: SettingsUpdate):
     if "interval_minutes" in changes and _scheduler:
         _scheduler.reschedule(int(changes["interval_minutes"]))
     return SettingsOut(**s.__dict__)
+
+
+@app.get("/api/schedule", response_model=ScheduleOut)
+def get_schedule():
+    """调度查询（issue #17）：下次定时执行时间 + 当前间隔。
+
+    APScheduler 用系统本地时区计算 next_run_time（本机 UTC+8），此处显式转 UTC
+    字符串（与 models.utcnow() 同格式）返回，避免裸 strftime 把本地时间当 UTC
+    重蹈 2026-10-10 任务时间差 8 小时的覆辙。
+    """
+    with database.get_session() as db:
+        s = config.load_settings(db)
+    next_run = _scheduler.next_run_time() if _scheduler else None
+    if next_run is not None:
+        next_run_utc = next_run.astimezone(timezone.utc)
+        next_run_str = next_run_utc.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        next_run_str = None
+    return ScheduleOut(next_run_time=next_run_str, interval_minutes=s.interval_minutes)
 
 
 # ---------- 序列化 ----------
