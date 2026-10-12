@@ -38,6 +38,7 @@ async def _lifespan(_app: FastAPI):
     # ADR-0004/0006：.env 缺失（含缺 PROXY）时拒绝启动（load_settings 依赖 .env 默认值，必须先校验）
     config.ensure_env_defaults()
     database.init_db()
+    _cleanup_stale_runs()
     with database.get_session() as db:
         s = config.load_settings(db)
     global _scheduler
@@ -259,6 +260,22 @@ def _mark_run_failed(run_id: int, error: str) -> None:
             run.ended_at = utcnow()
             run.error = error
             db.commit()
+
+
+def _cleanup_stale_runs() -> None:
+    """启动清理（issue #23）：把上次进程遗留的 running 行落为 failed。
+
+    覆盖热加载重启（改代码触发，执行中任务被杀）与手动关窗后重启两种场景。
+    进程级锁（_GLOBAL_RUNNING）随进程消失，新进程无残留锁，清理 run 行即可。
+    """
+    from backend.models import utcnow
+    with database.get_session() as db:
+        rows = db.execute(select(Run).where(Run.status == "running")).scalars().all()
+        for run in rows:
+            run.status = "failed"
+            run.ended_at = utcnow()
+            run.error = "服务重启中断"
+        db.commit()
 
 
 # ---------- 前端静态托管 ----------

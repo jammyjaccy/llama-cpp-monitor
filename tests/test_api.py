@@ -129,6 +129,53 @@ def test_reports_pagination(client):
     assert c.get("/api/reports/total").json() == {"total": 25}
 
 
+@pytest.fixture()
+def client_with_stale_runs(tmp_path, monkeypatch):
+    """issue #23：在 app 启动前预置 run 行（含一条 running），验证启动清理。"""
+    engine = create_engine(f"sqlite:///{tmp_path}/api.db", future=True)
+    Base.metadata.create_all(engine)
+    TestingSession = sessionmaker(bind=engine, future=True, expire_on_commit=False)
+    monkeypatch.setattr(database, "engine", engine)
+    monkeypatch.setattr(database, "SessionLocal", TestingSession)
+    monkeypatch.setattr(config, "_ENV_DEFAULTS", {
+        "model_base_url": "http://localhost:4000",
+        "model_api_key": "env-key",
+        "model_name": "Swift-Qwen3.8-27B",
+        "proxy": "http://127.0.0.1:7897",
+    })
+    with TestingSession() as s:
+        s.add(Run(trigger="scheduled", status="running", started_at="2026-10-10 01:00:00"))
+        s.add(Run(trigger="manual", status="ok",
+                  started_at="2026-10-10 01:00:00", ended_at="2026-10-10 01:05:00"))
+        s.add(Run(trigger="manual", status="failed",
+                  started_at="2026-10-10 01:00:00", ended_at="2026-10-10 01:05:00", error="boom"))
+        s.add(Run(trigger="manual", status="partial",
+                  started_at="2026-10-10 01:00:00", ended_at="2026-10-10 01:05:00"))
+        s.commit()
+    with TestClient(app) as c:  # 进 lifespan，触发启动清理
+        yield c, TestingSession
+
+
+def test_startup_cleanup_marks_running_failed(client_with_stale_runs):
+    """issue #23：启动时遗留 running 行落为 failed（error「服务重启中断」、ended_at 补当前时间）。"""
+    _, TestingSession = client_with_stale_runs
+    with TestingSession() as s:
+        run = s.get(Run, 1)
+        assert run.status == "failed"
+        assert "服务重启中断" in (run.error or "")
+        assert run.ended_at is not None
+
+
+def test_startup_cleanup_keeps_finished_runs(client_with_stale_runs):
+    """issue #23：既有 ok/failed/partial 行不受启动清理影响。"""
+    _, TestingSession = client_with_stale_runs
+    with TestingSession() as s:
+        assert s.get(Run, 2).status == "ok"
+        assert s.get(Run, 3).status == "failed"
+        assert s.get(Run, 3).error == "boom"
+        assert s.get(Run, 4).status == "partial"
+
+
 def test_run_out_serialization():
     r = Run(trigger="manual", status="ok", versions_processed=json.dumps(["b11518"]))
     out = _run_out(r)
