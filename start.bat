@@ -2,18 +2,21 @@
 chcp 65001 >nul
 rem llama-cpp-monitor 生产一键启动（issue #23，spec #22）
 rem 编码约定：本文件保持 UTF-8 无 BOM，靠第 2 行 chcp 65001 对齐控制台代码页。
-rem 勿存为 GBK（与仓库其他 UTF-8 文件不一致，编辑器一保存就复发乱码）。
+rem 行尾约定：本文件必须为 CRLF（Windows 批处理硬性要求；LF 会被 cmd 误读成碎命令，
+rem           表现为 'rlevel'/'墠鍙板崟绐楀彛' 之类的乱码报错，且 conda activate 行会被破坏）。
+rem           编辑器保存时勿转成 LF。勿存为 GBK（与仓库其他 UTF-8 文件不一致）。
 
 rem ---------- 参数：--build 强制重建前端 ----------
 set FORCE_BUILD=0
 if /i "%~1"=="--build" set FORCE_BUILD=1
 
-rem ---------- conda 环境 ----------
-call conda activate llamacpp-monitor
-if errorlevel 1 (
-    echo [错误] conda 环境 llamacpp-monitor 激活失败，请确认已安装 conda 且该环境存在。
+rem ---------- Python 环境（不依赖 conda activate，直接指向 env 的 Scripts，避免落到系统 Python） ----------
+set "PYENV=H:\conda_envs\llamacpp-monitor"
+if not exist "%PYENV%\Scripts\uvicorn.exe" (
+    echo [错误] 未找到 conda 环境 llamacpp-monitor（%PYENV%），请先创建该环境并安装 requirements.txt。
     exit /b 1
 )
+set "PATH=%PYENV%\Scripts;%PYENV%;%PATH%"
 
 rem ---------- node/npm 自检 ----------
 where node >nul 2>nul
