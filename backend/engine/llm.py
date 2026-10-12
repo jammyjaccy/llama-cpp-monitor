@@ -22,6 +22,7 @@ PROMPT_TEMPLATE = """你是 llama.cpp 版本更新分析助手。用户本地运
 {{
   "has_positive": bool,          // 对用户本地环境是否有正提升
   "positive_items": [{{"item": str, "reason": str}}],  // 有正提升的条目及理由；无则空数组
+  "commit_notes": [{{"sha": str, "summary": str, "positive": bool}}],  // 逐 commit 版本修改说明：对上面 commit 列表中的每个 commit 输出一条（无论版本整体是否有正提升）；sha 取该 commit 的 sha；summary 是一句话解释该提交做了什么；positive 标记该提交是否构成正提升
   "launch_impact": {{
     "flags_removed": [str],      // 用户所用 flag 中被删除的
     "flags_renamed": [str],      // 被改名的（写 旧名->新名）
@@ -30,6 +31,10 @@ PROMPT_TEMPLATE = """你是 llama.cpp 版本更新分析助手。用户本地运
   }},
   "suggested_flags": [{{"flag": str, "reason": str}}]  // 建议用户加上的新 flag；无则空数组
 }}
+
+一致性要求（必须同时满足）：
+- has_positive 当且仅当 commit_notes 中存在 positive=true 的提交
+- positive_items 非空当且仅当 has_positive=true
 
 正提升判定标准：
 - 算：性能改进（尤其 CUDA/MTP 投机解码/flash-attn/内存，与用户配置相关）；用户启动命令可用的新功能；修掉影响用户这类用法的 bug
@@ -110,4 +115,25 @@ class LLMClient:
         choices = data.get("choices") or []
         if not choices:
             raise LLMError("LLM returned no choices")
-        return _extract_json(choices[0]["message"]["content"])
+        result = _extract_json(choices[0]["message"]["content"])
+        _check_consistency(result)
+        return result
+
+
+def _check_consistency(result: dict) -> None:
+    """commit_notes 一致性校验（ADR-0007）：违反抛 LLMError（与 malformed JSON 同一出口）。
+
+    不校验 sha 与输入 commit 的对齐（漏标/错标由前端按 sha 匹配降级处理）。
+    """
+    notes = result.get("commit_notes")
+    if not isinstance(notes, list):
+        raise LLMError("commit_notes missing or not a list")
+    has_positive = bool(result.get("has_positive"))
+    any_positive = any(bool(n.get("positive")) for n in notes)
+    if has_positive != any_positive:
+        raise LLMError(
+            f"has_positive={has_positive} but commit_notes has positive={any_positive}")
+    items = result.get("positive_items") or []
+    if (len(items) > 0) != has_positive:
+        raise LLMError(
+            f"positive_items non-empty={len(items) > 0} but has_positive={has_positive}")

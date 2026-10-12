@@ -89,6 +89,7 @@ def _seed_version(s: Session, tag="b11518"):
         tag=tag, published_at="2026-10-09T01:00:00Z", commit_count=2,
         commits_raw=json.dumps([{"sha": "abc1234", "message": "ADD: --foo"}]),
         positive_items=json.dumps([{"item": "x", "reason": "y"}], ensure_ascii=False),
+        commit_notes=json.dumps([{"sha": "abc1234", "summary": "新增 --foo", "positive": False}]),
         launch_impact=json.dumps({"notes": "无"}),
         suggested_flags=json.dumps([]),
         help_diffed=1, analyzed=1,
@@ -108,12 +109,14 @@ def test_report_list_and_detail(client):
     assert len(items) == 1
     assert items[0]["tag"] == "b11518"
     assert items[0]["positive_items"][0]["item"] == "x"
+    assert items[0]["commit_notes"][0]["sha"] == "abc1234"
     assert items[0]["help_diffed"] == 1
 
     r = c.get("/api/reports/b11518")
     assert r.status_code == 200
     detail = r.json()
     assert detail["commits_raw"][0]["sha"] == "abc1234"
+    assert detail["commit_notes"][0]["summary"] == "新增 --foo"
     assert detail["new_commands"][0]["flag"] == "foo"
     assert detail["new_commands"][0]["source"] == "text"
 
@@ -184,10 +187,18 @@ def test_run_out_serialization():
 
 
 def test_version_out_serialization():
-    v = Version(tag="b1", positive_items=json.dumps([{"item": "a", "reason": "b"}]))
+    v = Version(
+        tag="b1",
+        positive_items=json.dumps([{"item": "a", "reason": "b"}]),
+        commit_notes=json.dumps([{"sha": "abc", "summary": "s", "positive": False}]),
+    )
     out = _version_out(v)
     assert out["positive_items"] == [{"item": "a", "reason": "b"}]
+    assert out["commit_notes"] == [{"sha": "abc", "summary": "s", "positive": False}]
     assert out["launch_impact"] == {}
+    # commit_notes 为空（None）时序列化为 []
+    empty = _version_out(Version(tag="b2"))
+    assert empty["commit_notes"] == []
 
 
 def test_spa_resolve_blocks_traversal(tmp_path, monkeypatch):

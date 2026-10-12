@@ -224,6 +224,7 @@ def _version_out(v: Version) -> dict:
         "published_at": v.published_at,
         "commit_count": v.commit_count,
         "positive_items": json.loads(v.positive_items) if v.positive_items else [],
+        "commit_notes": json.loads(v.commit_notes) if v.commit_notes else [],
         "launch_impact": json.loads(v.launch_impact) if v.launch_impact else {},
         "suggested_flags": json.loads(v.suggested_flags) if v.suggested_flags else [],
         "help_diffed": v.help_diffed,

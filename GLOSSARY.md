@@ -14,6 +14,9 @@ llama.cpp 的一次发布，以 tag `bNNNNN` 标识（如 b11518）。是监控�
 ## 正提升 (Positive Improvement)
 某版本的变更对用户本地运行环境有实际收益：性能改进（尤其与用户 GPU/投机解码/flash-attn 配置相关）、用户启动命令可用的新功能、修掉影响用户用法的 bug。纯重构、CI、文档、用户不用的后端（Vulkan/SYCL/Android 等）不算。每版分析必须给出「有/无正提升」的明确结论及理由。
 
+## 版本修改说明 (Commit Notes)
+某版本 LLM 分析产出的逐 commit 说明：每个 commit 一条 `{sha, summary, positive}`——一句话解释该提交做了什么，以及它是否构成正提升。无论该版本整体是否有正提升，所有 commit 均有说明。`positive=true` 的提交在报告页红色显示，其余黑色。与「正提升条目」的区别：正提升条目是版本级结论（这版对你有没有用、为什么），版本修改说明是提交级标注（哪些提交是正提升）。
+
 ## 新增命令 (New Command)
 某版本相比上一版本新出现的命令行 flag。来源有二：**文本来源**（release/commit 文本中 `ADD --xxxx` 类字样）与 **help-diff 来源**（该版二进制 `--help` 输出与上一版 diff）。单独成表记录，与版本记录关联。
 

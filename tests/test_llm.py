@@ -51,16 +51,26 @@ def test_build_prompt_contains_inputs():
     assert "positive" in prompt.lower() or "正提升" in prompt
 
 
+def _notes(pos_shas):
+    """构造与 COMMITS 对齐的 commit_notes：pos_shas 中的 sha 标 positive=True。"""
+    return [
+        {"sha": c["sha"], "summary": f"说明 {c['sha']}", "positive": c["sha"] in pos_shas}
+        for c in COMMITS
+    ]
+
+
 def test_parse_success():
     client = FakeClient(_payload(json.dumps({
         "has_positive": True,
         "positive_items": [{"item": "MTP 性能改进", "reason": "与用户 draft-mtp 配置相关"}],
+        "commit_notes": _notes({"abc123"}),
         "launch_impact": {"flags_removed": [], "flags_renamed": [], "default_changes": [], "notes": "无影响"},
         "suggested_flags": [{"flag": "--new-flag", "reason": "测试用"}],
     })))
     result = LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
     assert result["has_positive"] is True
     assert result["positive_items"][0]["item"] == "MTP 性能改进"
+    assert result["commit_notes"][0]["sha"] == "abc123"
     assert result["suggested_flags"][0]["flag"] == "--new-flag"
     assert client.calls[0][0].endswith("/v1/chat/completions")
 
@@ -69,22 +79,86 @@ def test_parse_no_positive():
     client = FakeClient(_payload(json.dumps({
         "has_positive": False,
         "positive_items": [],
+        "commit_notes": _notes(set()),
         "launch_impact": {"flags_removed": [], "flags_renamed": [], "default_changes": [], "notes": "纯重构"},
         "suggested_flags": [],
     })))
     result = LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
     assert result["has_positive"] is False
     assert result["positive_items"] == []
+    assert result["commit_notes"]  # 无正提升也有逐 commit 说明
 
 
 def test_parse_json_in_markdown_fence():
     client = FakeClient(_payload("```json\n" + json.dumps({
         "has_positive": False, "positive_items": [],
+        "commit_notes": _notes(set()),
         "launch_impact": {"flags_removed": [], "flags_renamed": [], "default_changes": [], "notes": ""},
         "suggested_flags": [],
     }) + "\n```"))
     result = LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
     assert result["has_positive"] is False
+
+
+def test_consistency_commit_notes_missing_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": False, "positive_items": [],
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
+
+
+def test_consistency_commit_notes_not_list_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": False, "positive_items": [],
+        "commit_notes": "not-a-list",
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
+
+
+def test_consistency_has_positive_true_but_no_positive_note_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": True,
+        "positive_items": [{"item": "x", "reason": "y"}],
+        "commit_notes": _notes(set()),
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
+
+
+def test_consistency_has_positive_false_but_positive_note_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": False, "positive_items": [],
+        "commit_notes": _notes({"abc123"}),
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
+
+
+def test_consistency_positive_items_nonempty_but_has_positive_false_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": False,
+        "positive_items": [{"item": "x", "reason": "y"}],
+        "commit_notes": _notes(set()),
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
+
+
+def test_consistency_has_positive_true_but_positive_items_empty_raises():
+    client = FakeClient(_payload(json.dumps({
+        "has_positive": True, "positive_items": [],
+        "commit_notes": _notes({"abc123"}),
+        "launch_impact": {}, "suggested_flags": [],
+    })))
+    with pytest.raises(LLMError):
+        LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_http_error_raises_llm_error():

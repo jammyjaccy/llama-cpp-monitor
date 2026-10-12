@@ -43,6 +43,10 @@ class FakeLLM:
         self.result = result or {
             "has_positive": False,
             "positive_items": [],
+            "commit_notes": [
+                {"sha": "aaa111", "summary": "说明 aaa111", "positive": False},
+                {"sha": "bbb222", "summary": "说明 bbb222", "positive": False},
+            ],
             "launch_impact": {"flags_removed": [], "flags_renamed": [], "default_changes": [], "notes": ""},
             "suggested_flags": [],
         }
@@ -123,6 +127,10 @@ COMPARE = {
 POSITIVE_RESULT = {
     "has_positive": True,
     "positive_items": [{"item": "x", "reason": "y"}],
+    "commit_notes": [
+        {"sha": "aaa111", "summary": "说明 aaa111", "positive": True},
+        {"sha": "bbb222", "summary": "说明 bbb222", "positive": False},
+    ],
     "launch_impact": {
         "flags_removed": [], "flags_renamed": [], "default_changes": [], "notes": "",
     },
@@ -149,6 +157,10 @@ def test_processes_new_versions_ascending(env):
         assert set(versions) == {"b11518", "b11519"}
         assert versions["b11518"].commit_count == 2
         assert versions["b11518"].analyzed == 1
+        # commit_notes 落库（无正提升版本也有逐 commit 说明）
+        notes = json.loads(versions["b11518"].commit_notes)
+        assert [n["sha"] for n in notes] == ["aaa111", "bbb222"]
+        assert all(n["positive"] is False for n in notes)
 
 
 def test_text_scan_writes_new_commands(env):
@@ -321,6 +333,33 @@ def test_llm_failure_marks_partial_and_reanalyzes_later(env):
         v = s.execute(select(Version).where(
             Version.tag == "b11518")).scalar_one()
         assert v.analyzed == 1
+
+
+def test_commit_notes_validation_failure_marks_partial_and_reanalyzes(env):
+    """commit_notes 一致性校验失败（LLMError）：analyzed 保持 0、commits_raw 保留、
+    commit_notes 未落库，下次补分析成功。"""
+    fetcher = FakeFetcher(RELEASES, COMPARE)
+    # 第一次 LLM 校验失败（commit_notes 不一致），第二次合法
+    llm_bad = FakeLLM(fail=True)
+    runner = make_runner(env, fetcher, llm_bad)
+    run = runner.run("manual")
+    assert run.status == "partial"
+    with env() as s:
+        v = s.execute(select(Version).where(Version.tag == "b11518")).scalar_one()
+        assert v.analyzed == 0
+        assert v.commits_raw  # 原始数据保留
+        assert v.commit_notes is None  # 校验失败未落库
+
+    # 下次执行补分析成功，commit_notes 落库
+    llm_ok = FakeLLM()
+    runner2 = make_runner(env, fetcher, llm_ok)
+    run2 = runner2.run("manual")
+    assert run2.status == "ok"
+    with env() as s:
+        v = s.execute(select(Version).where(Version.tag == "b11518")).scalar_one()
+        assert v.analyzed == 1
+        notes = json.loads(v.commit_notes)
+        assert [n["sha"] for n in notes] == ["aaa111", "bbb222"]
 
 
 def test_partial_does_not_advance_baseline(env):

@@ -22,6 +22,7 @@ class Version(Base):
     commit_count: Mapped[int | None] = mapped_column(Integer)
     commits_raw: Mapped[str | None] = mapped_column(Text)
     positive_items: Mapped[str | None] = mapped_column(Text)   # JSON
+    commit_notes: Mapped[str | None] = mapped_column(Text)     # JSON 数组（逐 commit 说明）
     launch_impact: Mapped[str | None] = mapped_column(Text)    # JSON
     suggested_flags: Mapped[str | None] = mapped_column(Text)  # JSON
     help_diffed: Mapped[int] = mapped_column(Integer, default=0)

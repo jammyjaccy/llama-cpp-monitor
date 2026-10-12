@@ -18,6 +18,7 @@ class VersionOut(BaseModel):
     published_at: str | None
     commit_count: int | None
     positive_items: list[dict] = []
+    commit_notes: list[dict] = []
     launch_impact: dict = {}
     suggested_flags: list[dict] = []
     help_diffed: int

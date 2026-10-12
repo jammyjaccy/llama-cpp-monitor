@@ -182,6 +182,7 @@ class Runner:
                     return False
 
                 existing.positive_items = json.dumps(result.get("positive_items", []), ensure_ascii=False)
+                existing.commit_notes = json.dumps(result.get("commit_notes", []), ensure_ascii=False)
                 existing.launch_impact = json.dumps(result.get("launch_impact", {}), ensure_ascii=False)
                 existing.suggested_flags = json.dumps(result.get("suggested_flags", []), ensure_ascii=False)
                 existing.analyzed = 1
