@@ -100,63 +100,68 @@ def test_parse_json_in_markdown_fence():
     assert result["has_positive"] is False
 
 
+def _consistency_payload(**overrides):
+    """一致性用例基线：has_positive=False / positive_items=[] / commit_notes 全非正。
+
+    各用例只传要覆盖的字段；传 None 表示删除对应键（如缺 commit_notes）。
+    """
+    payload = {
+        "has_positive": False,
+        "positive_items": [],
+        "commit_notes": _notes(set()),
+        "launch_impact": {},
+        "suggested_flags": [],
+    }
+    for key, value in overrides.items():
+        if value is None:
+            payload.pop(key, None)
+        else:
+            payload[key] = value
+    return payload
+
+
 def test_consistency_commit_notes_missing_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": False, "positive_items": [],
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(commit_notes=None))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_consistency_commit_notes_not_list_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": False, "positive_items": [],
-        "commit_notes": "not-a-list",
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(commit_notes="not-a-list"))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_consistency_has_positive_true_but_no_positive_note_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": True,
-        "positive_items": [{"item": "x", "reason": "y"}],
-        "commit_notes": _notes(set()),
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(
+        has_positive=True,
+        positive_items=[{"item": "x", "reason": "y"}],
+    ))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_consistency_has_positive_false_but_positive_note_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": False, "positive_items": [],
-        "commit_notes": _notes({"abc123"}),
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(
+        commit_notes=_notes({"abc123"}),
+    ))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_consistency_positive_items_nonempty_but_has_positive_false_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": False,
-        "positive_items": [{"item": "x", "reason": "y"}],
-        "commit_notes": _notes(set()),
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(
+        positive_items=[{"item": "x", "reason": "y"}],
+    ))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 
 
 def test_consistency_has_positive_true_but_positive_items_empty_raises():
-    client = FakeClient(_payload(json.dumps({
-        "has_positive": True, "positive_items": [],
-        "commit_notes": _notes({"abc123"}),
-        "launch_impact": {}, "suggested_flags": [],
-    })))
+    client = FakeClient(_payload(json.dumps(_consistency_payload(
+        has_positive=True,
+        commit_notes=_notes({"abc123"}),
+    ))))
     with pytest.raises(LLMError):
         LLMClient(client).analyze(COMMITS, LAUNCH_CMD)
 

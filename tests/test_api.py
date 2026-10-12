@@ -206,6 +206,17 @@ def _parse_utc(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
 
 
+def _assert_next_run_in_window(client, interval_minutes):
+    """GET /api/schedule → 断言 next_run_time 落在「现在」到「现在+间隔」之间。"""
+    c, _ = client
+    r = c.get("/api/schedule")
+    body = r.json()
+    now = datetime.now(timezone.utc)
+    nxt = _parse_utc(body["next_run_time"])
+    assert now <= nxt <= now + timedelta(minutes=interval_minutes, seconds=5)
+    return body
+
+
 def test_schedule_shape(client):
     """issue #17：GET /api/schedule 返回 200，含 next_run_time 与 interval_minutes。"""
     import re
@@ -228,13 +239,9 @@ def test_schedule_interval_matches_settings(client):
     r = c.put("/api/settings", json={"interval_minutes": 30})
     assert r.status_code == 200
 
-    r = c.get("/api/schedule")
-    body = r.json()
-    assert body["interval_minutes"] == 30
     # reschedule 后 next_run_time 应在「现在」到「现在+30min」之间（新间隔）
-    now = datetime.now(timezone.utc)
-    nxt = _parse_utc(body["next_run_time"])
-    assert now <= nxt <= now + timedelta(minutes=30, seconds=5)
+    body = _assert_next_run_in_window(client, 30)
+    assert body["interval_minutes"] == 30
 
 
 def test_schedule_next_run_is_utc(client):
@@ -243,13 +250,7 @@ def test_schedule_next_run_is_utc(client):
     测试环境是 UTC+8 机器：若裸 strftime（本地时间当 UTC），返回字符串会比真实
     UTC 大 8 小时，此区间断言会抓出来。
     """
-    c, _ = client
-    r = c.get("/api/schedule")
-    body = r.json()
-    interval = body["interval_minutes"]
-    now = datetime.now(timezone.utc)
-    nxt = _parse_utc(body["next_run_time"])
-    assert now <= nxt <= now + timedelta(minutes=interval, seconds=5)
+    _assert_next_run_in_window(client, 120)
 
 
 def test_spa_resolve_blocks_traversal(tmp_path, monkeypatch):

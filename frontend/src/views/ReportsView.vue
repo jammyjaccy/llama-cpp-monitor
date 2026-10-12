@@ -188,7 +188,7 @@ onMounted(loadList)
           <el-tag :type="diffType(row)">{{ diffTag(row) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="正提升数据" min-width="220">
+      <el-table-column label="正提升提交数" min-width="220">
         <template #default="{ row }">
           <span>提交数：{{ row.commit_count ?? '—' }}条，</span>
           <span v-if="row.analyzed" class="positive">正提升：{{ positiveNoteCount(row) }}条</span>
