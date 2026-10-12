@@ -77,7 +77,7 @@
 | ASGI 服务器 | uvicorn | 生产与开发统一 |
 | 调度 | APScheduler | 内置调度（ADR-0002） |
 | 数据库 | SQLite | `H:\data\llamacpp-monitor\monitor.db` |
-| ORM | **SQLAlchemy 2.x** | 四表模型集中定义；不用 Alembic 迁移（个人工具，schema 变更手动执行） |
+| ORM | **SQLAlchemy 2.x** | 四表模型集中定义；不用 Alembic 迁移（个人工具）。schema 变更：启动时 `database._ensure_columns()` 幂等检测缺列并 `ALTER TABLE ADD COLUMN`（可空列，免手工，可重复执行） |
 | HTTP 客户端 | httpx | GitHub API（走代理）+ LLM 调用，一个依赖两用 |
 | LLM 调用 | OpenAI 兼容接口（`/v1/chat/completions`），httpx 直调 | 不引 openai SDK，少一个依赖 |
 | 文本 diff | 标准库 difflib | --help 对比 |
@@ -133,6 +133,7 @@ versions(
   suggested_flags TEXT,              -- 建议用户加上的新 flag（JSON）
   help_diffed INTEGER DEFAULT 0,     -- 是否做过 --help diff
   analyzed INTEGER DEFAULT 0,        -- LLM 分析是否完成
+  commit_notes TEXT,                 -- 逐 commit 版本修改说明（JSON 数组，同 positive_items 存储方式，ADR-0007）
   created_at TEXT
 )
 

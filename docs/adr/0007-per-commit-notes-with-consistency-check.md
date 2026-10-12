@@ -6,4 +6,4 @@
 
 **一致性校验**：`has_positive` 必须等于「commit_notes 中是否存在 positive=true」，`positive_items` 非空必须当且仅当 `has_positive=true`；违反按分析失败处理（analyzed 保持 0，下次执行补分析重试）。备选是后端覆写 `has_positive` 为派生值，但那会悄悄改掉 LLM 结论，且堵不住 positive_items 与 has_positive 打架，被否。条件 help-diff 仍只看 `has_positive`（ADR-0003 不变）。
 
-**后果**：旧版本无 commit_notes，通过一次性将 analyzed 置 0 走既有补分析路径回填（LLM 重跑，positive_items 等一并刷新）；回填期间任务执行时间变长。LLM 漏标/错标 sha 不校验，前端按 sha 匹配降级显示（无 note 的 commit 黑色无解释，孤儿 note 丢弃）。
+**后果**：旧版本无 commit_notes，通过一次性将 analyzed 置 0 走既有补分析路径回填（LLM 重跑，positive_items 等一并刷新）；回填期间任务执行时间变长。LLM 漏标/错标 sha 不校验，前端按 sha 匹配降级显示（无 note 的 commit 黑色无解释，孤儿 note 丢弃）。`commit_notes` 列的 schema 变更不走手动 ALTER：`database.init_db()` 后由 `_ensure_columns()` 幂等检测缺列并 `ALTER TABLE ADD COLUMN`（可空列，免手工、可重复执行），取代 spec 原「schema 变更手动执行」约定（2026-10-12 code-review 后回填）。

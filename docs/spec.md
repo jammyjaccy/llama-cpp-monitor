@@ -47,7 +47,7 @@
 
 **技术栈**
 
-- 后端：Python 3.14（conda 环境 `llamacpp-monitor`）、FastAPI + Pydantic、uvicorn、APScheduler、SQLite + SQLAlchemy 2.x（不用 Alembic，schema 变更手动执行）、httpx（GitHub API 与 LLM 调用共用，代理可配置）、OpenAI 兼容接口直调 LLM（不引 openai SDK）、标准库 difflib（help diff）与 zipfile（二进制解压，用后删除 zip 只留 help 文本）、pytest。
+- 后端：Python 3.14（conda 环境 `llamacpp-monitor`）、FastAPI + Pydantic、uvicorn、APScheduler、SQLite + SQLAlchemy 2.x（不用 Alembic，schema 变更由启动时 `_ensure_columns()` 幂等补列）、httpx（GitHub API 与 LLM 调用共用，代理可配置）、OpenAI 兼容接口直调 LLM（不引 openai SDK）、标准库 difflib（help diff）与 zipfile（二进制解压，用后删除 zip 只留 help 文本）、pytest。
 - 前端：Vue 3 + Vite + TypeScript、Element Plus、vue-router、Pinia、axios、npm。
 - 数据文件：SQLite 库位于 `H:\data\llamacpp-monitor\monitor.db`。
 
