@@ -1,0 +1,5 @@
+# Windows 批处理硬性要求 CRLF：cmd 对 LF 行尾会误读成碎命令，
+# 表现为 'rlevel'/'墠鍙板崟绐楀彛' 之类的乱码，且会破坏 conda/PATH 行。
+# 用 eol=crlf 强制所有平台（含 Linux/macOS）检出为 CRLF，杜绝 LF 回归。
+*.bat text eol=crlf
+*.cmd text eol=crlf

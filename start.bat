@@ -66,6 +66,9 @@ if not errorlevel 1 (
     exit /b 1
 )
 
-rem ---------- 启动后端（前台单窗口，关窗即停；--reload 仅监听 backend/） ----------
-echo [启动] uvicorn backend.main:app --host 127.0.0.1 --port 5000 --reload --reload-dir backend
-uvicorn backend.main:app --host 127.0.0.1 --port 5000 --reload --reload-dir backend
+rem ---------- 启动后端（前台单进程，关窗即停、端口随进程释放） ----------
+rem 不加 --reload：reload 会另起一个 worker 子进程真正占住 5000，关窗只杀前台父进程，
+rem worker 残留成孤儿导致端口释放不掉。开发期要热重载，请另开窗口手动跑：
+rem   uvicorn backend.main:app --host 127.0.0.1 --port 5000 --reload --reload-dir backend
+echo [启动] uvicorn backend.main:app --host 127.0.0.1 --port 5000
+uvicorn backend.main:app --host 127.0.0.1 --port 5000
